@@ -81,6 +81,7 @@ def s3_sync(config_path: str) -> None:
 
 def run_sqlmesh_plan(config_path: str) -> None:
     logging.info('Syncing google sheet data.')
+    print(config_path)
     os.environ['CONFIG_PATH'] = str(config_path)
 
     sqlmesh_context = Context(

@@ -25,7 +25,7 @@ modal_image = (
     ),
 )
 def run_s3_sync():
-    s3_sync(config_path='config/boxofficemojo_2025.yaml')
+    s3_sync(config_path=project_root / 'src/config/boxofficemojo_2025.yaml')
 
 
 @app.function(
@@ -38,25 +38,11 @@ def run_s3_sync():
         initial_delay=60.0,
     ),
 )
-def run_friends_2025_sync():
-    google_sheet_sync(config_path='config/friends_2025.yaml')
-
-
-@app.function(
-    image=modal_image,
-    schedule=modal.Cron('0 5 * * *'),
-    secrets=[modal.Secret.from_name('box-office-drafting-secrets')],
-    retries=modal.Retries(
-        max_retries=3,
-        backoff_coefficient=1.0,
-        initial_delay=60.0,
-    ),
-)
-def run_ethan_and_noah_2025_sync():
-    google_sheet_sync(config_path='config/ethan_and_noah_2025.yaml')
+def update_dashboards():
+    google_sheet_sync(config_path=project_root / 'src/config/friends_2025.yaml')
+    google_sheet_sync(config_path=project_root / 'src/config/ethan_and_noah_2025.yaml')
 
 
 if __name__ == '__main__':
-    s3_sync(config_path=project_root / 'src/config/s3_sync.yml')
-    google_sheet_sync(config_path=project_root / 'src/config/friends_config.yml')
-    google_sheet_sync(config_path=project_root / 'src/config/ethan_noah_config.yml')
+    run_s3_sync.local()
+    update_dashboards.local()
