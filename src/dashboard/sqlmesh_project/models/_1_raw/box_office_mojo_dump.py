@@ -41,9 +41,9 @@ def execute(
             )
             select
                 "Release Group" as title
-                , coalesce(try_cast(replace("Worldwide"[2:], ',', '') as integer), 0) as revenue
-                , coalesce(try_cast(replace("Domestic"[2:], ',', '') as integer), 0) as domestic_rev
-                , coalesce(try_cast(replace("Foreign"[2:], ',', '') as integer), 0) as foreign_rev
+                , coalesce(try_cast(replace(substring("Worldwide", 3), ',', '') as integer), 0) as revenue
+                , coalesce(try_cast(replace(substring("Domestic", 3), ',', '') as integer), 0) as domestic_rev
+                , coalesce(try_cast(replace(substring("Foreign", 3), ',', '') as integer), 0) as foreign_rev
                 , scraped_date_from_s3 as loaded_date
                 , year_part_from_s3 as year_part
             from all_data
