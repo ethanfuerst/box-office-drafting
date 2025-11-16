@@ -25,7 +25,7 @@ modal_image = (
     ),
 )
 def run_s3_sync():
-    s3_sync(config_path=project_root / 'src/config/boxofficemojo_2025.yaml')
+    s3_sync(config_path=project_root / 'src/config/s3_sync.yml')
 
 
 @app.function(
@@ -39,8 +39,8 @@ def run_s3_sync():
     ),
 )
 def update_dashboards():
-    google_sheet_sync(config_path=project_root / 'src/config/friends_2025.yaml')
-    google_sheet_sync(config_path=project_root / 'src/config/ethan_and_noah_2025.yaml')
+    google_sheet_sync(config_path=project_root / 'src/config/friends_2025.yml')
+    google_sheet_sync(config_path=project_root / 'src/config/ethan_and_noah_2025.yml')
 
 
 if __name__ == '__main__':
