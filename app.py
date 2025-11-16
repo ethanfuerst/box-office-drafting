@@ -8,6 +8,11 @@ app = modal.App('box-office-drafting')
 modal_image = (
     modal.Image.debian_slim(python_version='3.12')
     .pip_install_from_pyproject('pyproject.toml')
+    .add_local_file(
+        'src/duckdb_databases/.gitkeep',
+        remote_path='/root/src/duckdb_databases/.gitkeep',
+        copy=True,
+    )
     .add_local_dir('src/config/', remote_path='/root/src/config')
     .add_local_dir('src/assets/', remote_path='/root/src/assets')
     .add_local_python_source('src')
