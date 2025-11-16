@@ -16,3 +16,6 @@ src/config/*
 # DuckDB databases
 src/duckdb_databases/*.duckdb
 src/duckdb_databases/*.duckdb.wal
+
+# SQLMesh project
+src/dashboard/sqlmesh_project/.cache/
