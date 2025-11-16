@@ -7,18 +7,22 @@ from sqlmesh.core.config import (
     ModelDefaultsConfig,
 )
 
-from src.utils.read_config import get_config_dict
 from src import project_root
+from src.utils.read_config import get_config_dict
 
 
 def get_sqlmesh_config(config_path: str) -> Config:
     config = get_config_dict(config_path)
     database_file = config.get('database_file')
-    
+
     # Get S3 credential environment variable names (handle both naming conventions)
-    s3_read_access_key_name = config.get('s3_read_access_key_name') or config.get('s3_read_access_key_id_var_name')
-    s3_read_secret_access_key_name = config.get('s3_read_secret_access_key_name') or config.get('s3_read_secret_access_key_var_name')
-    
+    s3_read_access_key_name = config.get('s3_read_access_key_name') or config.get(
+        's3_read_access_key_id_var_name'
+    )
+    s3_read_secret_access_key_name = config.get(
+        's3_read_secret_access_key_name'
+    ) or config.get('s3_read_secret_access_key_var_name')
+
     # Build secrets list only if S3 credentials are configured
     secrets = []
     if s3_read_access_key_name and s3_read_secret_access_key_name:
@@ -34,13 +38,15 @@ def get_sqlmesh_config(config_path: str) -> Config:
                     'secret': secret,
                 },
             ]
-    
+
     return Config(
         model_defaults=ModelDefaultsConfig(dialect='duckdb'),
         gateways={
             'duckdb': GatewayConfig(
                 connection=DuckDBConnectionConfig(
-                    database=str(project_root / 'src' / 'duckdb_databases' / database_file),
+                    database=str(
+                        project_root / 'src' / 'duckdb_databases' / database_file
+                    ),
                     extensions=[
                         {'name': 'httpfs'},
                     ],

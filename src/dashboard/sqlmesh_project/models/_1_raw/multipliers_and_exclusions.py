@@ -34,7 +34,9 @@ def execute(
     if not sheet_name:
         raise ValueError('sheet_name must be set in SQLMesh variables')
 
-    worksheet = get_worksheet(sheet_name, 'Multipliers and Exclusions', credentials_name)
+    worksheet = get_worksheet(
+        sheet_name, 'Multipliers and Exclusions', credentials_name
+    )
 
     raw = worksheet.get_all_values()
     df = DataFrame(data=raw[1:], columns=raw[0]).astype(str)
