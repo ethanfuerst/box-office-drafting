@@ -18,6 +18,7 @@ class DuckDBConnection:
             database=str(database_name),
             read_only=False,
         )
+
         self.need_write_access = need_write_access
         self._configure_connection(config)
 
