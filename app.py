@@ -1,7 +1,7 @@
 import modal
 
 from src import project_root
-from src.etl import google_sheet_sync, s3_sync
+from src.etl import google_sheet_sync
 
 app = modal.App('box-office-drafting')
 
@@ -21,20 +21,6 @@ modal_image = (
 
 @app.function(
     image=modal_image,
-    schedule=modal.Cron('0 7 * * *'),
-    secrets=[modal.Secret.from_name('box-office-drafting-secrets')],
-    retries=modal.Retries(
-        max_retries=3,
-        backoff_coefficient=1.0,
-        initial_delay=60.0,
-    ),
-)
-def run_s3_sync():
-    s3_sync(config_path=project_root / 'src/config/s3_sync.yml')
-
-
-@app.function(
-    image=modal_image,
     schedule=modal.Cron('0 5 * * *'),
     secrets=[modal.Secret.from_name('box-office-drafting-secrets')],
     retries=modal.Retries(
@@ -49,5 +35,4 @@ def update_dashboards():
 
 
 if __name__ == '__main__':
-    run_s3_sync.local()
     update_dashboards.local()
