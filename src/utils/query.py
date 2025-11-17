@@ -12,7 +12,9 @@ def table_to_df(
 ) -> DataFrame:
     duckdb_con = DuckDBConnection(config)
 
-    df = duckdb_con.df(f'select * from {table}')
+    catalog_name = config.get('database_file', '').replace('.duckdb', '')
+
+    df = duckdb_con.df(f'select * from {catalog_name}.{table}')
 
     duckdb_con.close()
 
