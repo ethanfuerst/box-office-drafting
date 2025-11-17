@@ -31,23 +31,15 @@ def execute(
     bucket = context.var('bucket') or ''
 
     if update_type == 's3':
-        s3_query = f'''
-            with all_data as (
-                select
-                    *
-                    , split_part(split_part(filename, 'release_year=', 2), '/', 1) as year_part_from_s3
-                    , strptime(split_part(split_part(filename, 'scraped_date=', 2), '/', 1), '%Y-%m-%d') as scraped_date_from_s3
-                from read_parquet('s3://{bucket}/release_year=*/scraped_date=*/data.parquet', filename=true)
-            )
-            select
-                "Release Group" as title
-                , coalesce(try_cast(replace(substring("Worldwide", 2), ',', '') as integer), 0) as revenue
-                , coalesce(try_cast(replace(substring("Domestic", 2), ',', '') as integer), 0) as domestic_rev
-                , coalesce(try_cast(replace(substring("Foreign", 2), ',', '') as integer), 0) as foreign_rev
-                , scraped_date_from_s3 as loaded_date
-                , year_part_from_s3 as year_part
-            from all_data
-        '''
+        s3_query = f"""
+        select
+            title,
+            revenue,
+            domestic_rev,
+            foreign_rev,
+            cast(to_timestamp(loaded_date) as date) as loaded_date,
+            year_part
+        from read_parquet('s3://{bucket}/published_tables/daily_ranks/data.parquet')"""
 
         result_df = context.engine_adapter.fetchdf(s3_query)
     else:
