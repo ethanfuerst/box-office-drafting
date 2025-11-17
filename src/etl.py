@@ -56,7 +56,6 @@ def load_worldwide_box_office_to_s3(
 def s3_sync(config_path: str) -> None:
     logging.info('Extracting worldwide box office data.')
     config = get_config_dict(config_path)
-    print(config)
 
     duckdb_con = DuckDBConnection(
         config=config,
@@ -81,7 +80,6 @@ def s3_sync(config_path: str) -> None:
 
 def run_sqlmesh_plan(config_path: str) -> None:
     logging.info('Syncing google sheet data.')
-    print(config_path)
     os.environ['CONFIG_PATH'] = str(config_path)
 
     sqlmesh_context = Context(
@@ -90,7 +88,7 @@ def run_sqlmesh_plan(config_path: str) -> None:
 
     plan = sqlmesh_context.plan()
     sqlmesh_context.apply(plan)
-    output = sqlmesh_context.run()
+    _ = sqlmesh_context.run()
 
 
 def load_dashboard_data(config_path: str) -> None:
