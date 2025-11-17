@@ -1,0 +1,21 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Config files
+src/config/*
+.env
+
+# DuckDB databases
+src/duckdb_databases/*.duckdb
+src/duckdb_databases/*.duckdb.wal
+
+# SQLMesh project
+src/dashboard/sqlmesh_project/.cache/
