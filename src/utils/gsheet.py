@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict
 
 import gspread_formatting as gsf
@@ -150,7 +150,7 @@ class GoogleSheetDashboard:
         self.worksheet = sh.worksheet(worksheet_title)
 
 
-def update_dashboard(gsheet_dashboard: GoogleSheetDashboard) -> None:
+def update_dashboard(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> None:
     for element in gsheet_dashboard.dashboard_elements:
         df_to_sheet(
             df=element[0],
@@ -164,10 +164,25 @@ def update_dashboard(gsheet_dashboard: GoogleSheetDashboard) -> None:
         and len(gsheet_dashboard.released_movies_df) > 0
     )
 
-    log_string = f'Last Updated UTC\n{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}'
+    log_string = f'Dashboard Last Updated\n{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} UTC'
 
     if dashboard_done_updating:
         log_string += '\nDashboard is done updating\nand can be removed from the etl'
+
+    duckdb_con = DuckDBConnection(config)
+
+    published_timestamp_of_most_recent_data = duckdb_con.query(
+        f'''
+            select max(published_timestamp_utc) as published_timestamp_utc
+            from cleaned.box_office_mojo_dump
+        '''
+    ).fetchnumpy()['published_timestamp_utc'][0]
+
+    duckdb_con.close()
+
+    # Convert numpy.datetime64 to Python datetime
+    dt = published_timestamp_of_most_recent_data.item()
+    log_string += f'\nData Updated Through\n{dt.strftime("%Y-%m-%d %H:%M:%S")} UTC'
 
     # Adding last updated header
     gsheet_dashboard.worksheet.update(
@@ -244,6 +259,7 @@ def update_dashboard(gsheet_dashboard: GoogleSheetDashboard) -> None:
         gsf.set_column_width(gsheet_dashboard.worksheet, column, 120)
 
     # gets resized wrong and have to do it manually
+    gsf.set_column_width(gsheet_dashboard.worksheet, 'G', 164)
     gsf.set_column_width(gsheet_dashboard.worksheet, 'R', 142)
     gsf.set_column_width(gsheet_dashboard.worksheet, 'W', 104)
     gsf.set_column_width(gsheet_dashboard.worksheet, 'X', 106)
@@ -378,7 +394,7 @@ def log_min_revenue_info(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -
 def load(config: Dict) -> None:
     gsheet_dashboard = GoogleSheetDashboard(config)
 
-    update_dashboard(gsheet_dashboard)
+    update_dashboard(gsheet_dashboard, config)
     update_titles(gsheet_dashboard)
     apply_conditional_formatting(gsheet_dashboard)
     log_missing_movies(gsheet_dashboard)

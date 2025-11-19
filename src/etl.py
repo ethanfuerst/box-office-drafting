@@ -35,7 +35,7 @@ def load_dashboard_data(config_path: str) -> None:
     config = get_config_dict(config_path)
     gsheet_dashboard = GoogleSheetDashboard(config)
 
-    update_dashboard(gsheet_dashboard)
+    update_dashboard(gsheet_dashboard, config)
     update_titles(gsheet_dashboard)
     apply_conditional_formatting(gsheet_dashboard)
     log_missing_movies(gsheet_dashboard)
