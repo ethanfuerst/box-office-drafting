@@ -2,7 +2,7 @@ from typing import Dict, List, Optional
 
 from pandas import DataFrame
 
-from src.utils.db_connection import DuckDBConnection
+from src.utils.db_connection import duckdb_connection
 
 
 def table_to_df(
@@ -10,13 +10,10 @@ def table_to_df(
     table: str,
     columns: Optional[List[str]] = None,
 ) -> DataFrame:
-    duckdb_con = DuckDBConnection(config)
-
     catalog_name = config.get('database_file', '').replace('.duckdb', '')
 
-    df = duckdb_con.df(f'select * from {catalog_name}.{table}')
-
-    duckdb_con.close()
+    with duckdb_connection(config) as duckdb_con:
+        df = duckdb_con.df(f'select * from {catalog_name}.{table}')
 
     if columns:
         df.columns = columns

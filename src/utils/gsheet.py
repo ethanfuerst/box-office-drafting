@@ -8,7 +8,7 @@ import gspread_formatting as gsf
 from dotenv import load_dotenv
 from gspread import service_account_from_dict
 
-from src.utils.db_connection import DuckDBConnection
+from src.utils.db_connection import duckdb_connection
 from src.utils.format import load_format_config
 from src.utils.gspread_format import df_to_sheet
 from src.utils.logging_config import setup_logging
@@ -170,16 +170,13 @@ def update_dashboard(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> No
     if dashboard_done_updating:
         log_string += '\nDashboard is done updating\nand can be removed from the etl'
 
-    duckdb_con = DuckDBConnection(config)
-
-    published_timestamp_of_most_recent_data = duckdb_con.query(
-        f'''
-            select max(published_timestamp_utc) as published_timestamp_utc
-            from cleaned.box_office_mojo_dump
-        '''
-    ).fetchnumpy()['published_timestamp_utc'][0]
-
-    duckdb_con.close()
+    with duckdb_connection(config) as duckdb_con:
+        published_timestamp_of_most_recent_data = duckdb_con.query(
+            f'''
+                select max(published_timestamp_utc) as published_timestamp_utc
+                from cleaned.box_office_mojo_dump
+            '''
+        ).fetchnumpy()['published_timestamp_utc'][0]
 
     # Convert numpy.datetime64 to Python datetime
     dt = published_timestamp_of_most_recent_data.item()
@@ -338,47 +335,44 @@ def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
 
 
 def log_min_revenue_info(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> None:
-    duckdb_con = DuckDBConnection(config)
-
-    min_revenue_of_most_recent_data = duckdb_con.query(
-        f'''
-        with most_recent_data as (
-            select title, revenue
-            from raw.box_office_mojo_dump where year_part = {gsheet_dashboard.year}
-            qualify rank() over (order by loaded_date desc) = 1
-            order by 2 desc
-        )
-
-        select title, revenue
-        from most_recent_data qualify row_number() over (order by revenue asc) = 1;
-        '''
-    ).fetchnumpy()['revenue'][0]
-
-    logging.info(
-        f'Minimum revenue of most recent data: {min_revenue_of_most_recent_data}'
-    )
-
-    movies_under_min_revenue = (
-        duckdb_con.query(
+    with duckdb_connection(config) as duckdb_con:
+        min_revenue_of_most_recent_data = duckdb_con.query(
             f'''
-            with raw_data as (
+            with most_recent_data as (
                 select title, revenue
-                from raw.box_office_mojo_dump
-                where year_part = {gsheet_dashboard.year}
-                qualify row_number() over (partition by title order by loaded_date desc) = 1
+                from raw.box_office_mojo_dump where year_part = {gsheet_dashboard.year}
+                qualify rank() over (order by loaded_date desc) = 1
+                order by 2 desc
             )
 
-            select raw_data.title from raw_data
-            inner join combined.base_query as base_query
-                on raw_data.title = base_query.title
-            where raw_data.revenue <= {min_revenue_of_most_recent_data}
+            select title, revenue
+            from most_recent_data qualify row_number() over (order by revenue asc) = 1;
             '''
-        )
-        .fetchnumpy()['title']
-        .tolist()
-    )
+        ).fetchnumpy()['revenue'][0]
 
-    duckdb_con.close()
+        logging.info(
+            f'Minimum revenue of most recent data: {min_revenue_of_most_recent_data}'
+        )
+
+        movies_under_min_revenue = (
+            duckdb_con.query(
+                f'''
+                with raw_data as (
+                    select title, revenue
+                    from raw.box_office_mojo_dump
+                    where year_part = {gsheet_dashboard.year}
+                    qualify row_number() over (partition by title order by loaded_date desc) = 1
+                )
+
+                select raw_data.title from raw_data
+                inner join combined.base_query as base_query
+                    on raw_data.title = base_query.title
+                where raw_data.revenue <= {min_revenue_of_most_recent_data}
+                '''
+            )
+            .fetchnumpy()['title']
+            .tolist()
+        )
 
     if movies_under_min_revenue:
         logging.info(

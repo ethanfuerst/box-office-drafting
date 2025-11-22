@@ -1,4 +1,6 @@
 import os
+from contextlib import contextmanager
+from typing import Any, Dict, Iterator
 
 import duckdb
 from dotenv import load_dotenv
@@ -58,3 +60,30 @@ class DuckDBConnection:
 
     def df(self, query):
         return self.connection.query(query).df()
+
+
+@contextmanager
+def duckdb_connection(
+    config: Dict[str, Any], need_write_access: bool = False
+) -> Iterator[DuckDBConnection]:
+    """
+    Context manager for DuckDB connections.
+
+    Ensures connections are properly closed even if an exception occurs.
+
+    Args:
+        config: Configuration dictionary containing database_file and S3 credentials
+        need_write_access: Whether write access is needed (affects S3 secret naming)
+
+    Yields:
+        DuckDBConnection: A configured DuckDB connection
+
+    Example:
+        >>> with duckdb_connection(config) as conn:
+        ...     df = conn.df('SELECT * FROM my_table')
+    """
+    conn = DuckDBConnection(config, need_write_access)
+    try:
+        yield conn
+    finally:
+        conn.close()
