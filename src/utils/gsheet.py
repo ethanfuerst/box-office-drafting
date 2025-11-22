@@ -13,6 +13,7 @@ from src.utils.format import load_format_config
 from src.utils.gspread_format import df_to_sheet
 from src.utils.logging_config import setup_logging
 from src.utils.query import table_to_df
+from src.utils.read_config import get_config_dict
 
 setup_logging()
 
@@ -391,7 +392,8 @@ def log_min_revenue_info(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -
         )
 
 
-def load(config: Dict) -> None:
+def load_dashboard_data(config_path: str) -> None:
+    config = get_config_dict(config_path)
     gsheet_dashboard = GoogleSheetDashboard(config)
 
     update_dashboard(gsheet_dashboard, config)
