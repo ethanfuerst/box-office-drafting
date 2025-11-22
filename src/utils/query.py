@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pandas import DataFrame
 
@@ -6,10 +6,11 @@ from src.utils.db_connection import duckdb_connection
 
 
 def table_to_df(
-    config: Dict,
+    config: Dict[str, Any],
     table: str,
     columns: Optional[List[str]] = None,
 ) -> DataFrame:
+    '''Load a SQL table into a pandas DataFrame.'''
     catalog_name = config.get('database_file', '').replace('.duckdb', '')
 
     with duckdb_connection(config) as duckdb_con:

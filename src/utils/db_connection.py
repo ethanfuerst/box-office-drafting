@@ -11,7 +11,8 @@ load_dotenv()
 
 
 class DuckDBConnection:
-    def __init__(self, config, need_write_access=False):
+    def __init__(self, config: Dict[str, Any], need_write_access: bool = False) -> None:
+        '''Initialize a DuckDB connection with S3 configuration.'''
         database_name = (
             project_root / 'src' / 'duckdb_databases' / config.get('database_file')
         )
@@ -24,7 +25,8 @@ class DuckDBConnection:
         self.need_write_access = need_write_access
         self._configure_connection(config)
 
-    def _configure_connection(self, config):
+    def _configure_connection(self, config: Dict[str, Any]) -> None:
+        '''Configure S3 credentials for the DuckDB connection.'''
         access_type = 'write' if self.need_write_access else 'read'
         s3_access_key_id_var_name = config.get(
             f's3_{access_type}_access_key_id_var_name',
@@ -49,16 +51,20 @@ class DuckDBConnection:
             '''
         )
 
-    def query(self, query):
+    def query(self, query: str) -> Any:
+        '''Execute a SQL query and return results.'''
         return self.connection.query(query)
 
-    def execute(self, query, *args, **kwargs):
+    def execute(self, query: str, *args: Any, **kwargs: Any) -> None:
+        '''Execute a SQL query without returning results.'''
         self.connection.execute(query, *args, **kwargs)
 
-    def close(self):
+    def close(self) -> None:
+        '''Close the DuckDB connection.'''
         self.connection.close()
 
-    def df(self, query):
+    def df(self, query: str) -> Any:
+        '''Execute a SQL query and return results as a pandas DataFrame.'''
         return self.connection.query(query).df()
 
 
@@ -66,7 +72,7 @@ class DuckDBConnection:
 def duckdb_connection(
     config: Dict[str, Any], need_write_access: bool = False
 ) -> Iterator[DuckDBConnection]:
-    """
+    '''
     Context manager for DuckDB connections.
 
     Ensures connections are properly closed even if an exception occurs.
@@ -81,7 +87,7 @@ def duckdb_connection(
     Example:
         >>> with duckdb_connection(config) as conn:
         ...     df = conn.df('SELECT * FROM my_table')
-    """
+    '''
     conn = DuckDBConnection(config, need_write_access)
     try:
         yield conn

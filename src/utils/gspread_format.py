@@ -1,4 +1,5 @@
 import logging
+from typing import Any, Dict, Optional
 
 from gspread import Worksheet
 from pandas import DataFrame
@@ -9,8 +10,12 @@ setup_logging()
 
 
 def df_to_sheet(
-    df: DataFrame, worksheet: Worksheet, location: str, format_dict=None
+    df: DataFrame,
+    worksheet: Worksheet,
+    location: str,
+    format_dict: Optional[Dict[str, Any]] = None,
 ) -> None:
+    '''Write a DataFrame to a Google Sheet and apply formatting if provided.'''
     worksheet.update(
         range_name=location, values=[df.columns.values.tolist()] + df.values.tolist()
     )

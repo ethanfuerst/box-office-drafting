@@ -1,8 +1,9 @@
 import json
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union
 
 
 def remove_comments(obj: Union[Dict, List]) -> Union[Dict, List]:
+    '''Remove comment keys (starting with '_comment') from a nested dictionary or list.'''
     if isinstance(obj, dict):
         return {
             k: remove_comments(v)
@@ -15,7 +16,8 @@ def remove_comments(obj: Union[Dict, List]) -> Union[Dict, List]:
         return obj
 
 
-def load_format_config(file_path: str) -> dict:
+def load_format_config(file_path: str) -> Dict[str, Any]:
+    '''Load a JSON format configuration file and remove comments.'''
     with open(file_path, 'r') as file:
         config = json.load(file)
     return remove_comments(config)

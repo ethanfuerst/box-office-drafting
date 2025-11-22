@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Dict
+from typing import Any, Dict
 
 import gspread_formatting as gsf
 from dotenv import load_dotenv
@@ -19,9 +19,12 @@ setup_logging()
 
 load_dotenv()
 
+DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+
 
 class GoogleSheetDashboard:
-    def __init__(self, config: Dict):
+    def __init__(self, config: Dict[str, Any]) -> None:
+        '''Initialize a Google Sheet dashboard with data from DuckDB.'''
         self.config = config
         self.year = config['year']
         self.gspread_credentials_name = config.get(
@@ -126,6 +129,7 @@ class GoogleSheetDashboard:
         self.setup_worksheet()
 
     def setup_worksheet(self) -> None:
+        '''Create and configure the Google Sheet worksheet.'''
         gspread_credentials_key = self.gspread_credentials_name
         gspread_credentials = os.getenv(gspread_credentials_key)
 
@@ -151,7 +155,10 @@ class GoogleSheetDashboard:
         self.worksheet = sh.worksheet(worksheet_title)
 
 
-def update_dashboard(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> None:
+def update_dashboard(
+    gsheet_dashboard: GoogleSheetDashboard, config: Dict[str, Any]
+) -> None:
+    '''Update the Google Sheet with dashboard data and metadata.'''
     for element in gsheet_dashboard.dashboard_elements:
         df_to_sheet(
             df=element[0],
@@ -165,7 +172,7 @@ def update_dashboard(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> No
         and len(gsheet_dashboard.released_movies_df) > 0
     )
 
-    log_string = f'Dashboard Last Updated\n{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} UTC'
+    log_string = f'Dashboard Last Updated\n{datetime.now(timezone.utc).strftime(DATETIME_FORMAT)} UTC'
 
     if dashboard_done_updating:
         log_string += '\nDashboard is done updating\nand can be removed from the etl'
@@ -180,7 +187,7 @@ def update_dashboard(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> No
 
     # Convert numpy.datetime64 to Python datetime
     dt = published_timestamp_of_most_recent_data.item()
-    log_string += f'\nData Updated Through\n{dt.strftime("%Y-%m-%d %H:%M:%S")} UTC'
+    log_string += f'\nData Updated Through\n{dt.strftime(DATETIME_FORMAT)} UTC'
 
     # Adding last updated header
     gsheet_dashboard.worksheet.update(
@@ -267,6 +274,7 @@ def update_dashboard(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> No
 
 
 def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
+    '''Update section titles in the Google Sheet.'''
     gsheet_dashboard.worksheet.update(
         values=[[gsheet_dashboard.dashboard_name]], range_name='B2'
     )
@@ -297,6 +305,7 @@ def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
 
 
 def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None:
+    '''Apply conditional formatting rules to the Google Sheet.'''
     still_in_theater_rule = gsf.ConditionalFormatRule(
         ranges=[gsf.GridRange.from_a1_range('X5:X', gsheet_dashboard.worksheet)],
         booleanRule=gsf.BooleanRule(
@@ -315,6 +324,7 @@ def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None
 
 
 def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
+    '''Log movies that are drafted but missing from the scoreboard.'''
     draft_df = table_to_df(
         gsheet_dashboard.config,
         'cleaned.drafter',
@@ -334,7 +344,10 @@ def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
         logging.info('All movies are on the scoreboard.')
 
 
-def log_min_revenue_info(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> None:
+def log_min_revenue_info(
+    gsheet_dashboard: GoogleSheetDashboard, config: Dict[str, Any]
+) -> None:
+    '''Log movies with revenue below the minimum threshold.'''
     with duckdb_connection(config) as duckdb_con:
         min_revenue_of_most_recent_data = duckdb_con.query(
             f'''
@@ -387,6 +400,7 @@ def log_min_revenue_info(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -
 
 
 def load_dashboard_data(config_path: str) -> None:
+    '''Load configuration and update the Google Sheet dashboard.'''
     config = get_config_dict(config_path)
     gsheet_dashboard = GoogleSheetDashboard(config)
 
