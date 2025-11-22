@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from gspread import service_account_from_dict
 
 from src.utils.config_types import ConfigDict
+from src.utils.constants import DATETIME_FORMAT
 from src.utils.db_connection import duckdb_connection
 from src.utils.format import load_format_config
 from src.utils.gspread_format import df_to_sheet
@@ -18,8 +19,6 @@ from src.utils.read_config import get_config_dict
 setup_logging()
 
 load_dotenv()
-
-DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 
 class GoogleSheetDashboard:

@@ -83,7 +83,6 @@ def validate_config(config: ConfigDict) -> ConfigDict:
     missing_fields = []
     type_errors = []
 
-    # Check required fields
     for field, expected_type in required_fields.items():
         if field not in config:
             missing_fields.append(field)
@@ -93,26 +92,17 @@ def validate_config(config: ConfigDict) -> ConfigDict:
                 f'{field}: expected {expected_type.__name__}, got {actual_type}'
             )
 
-    # Validate year is a positive integer
-    if 'year' in config and isinstance(config['year'], int):
-        if config['year'] < 2000 or config['year'] > 2100:
-            type_errors.append('year: must be between 2000 and 2100')
-
-    # Validate database_file ends with .duckdb
     if 'database_file' in config and isinstance(config['database_file'], str):
         if not config['database_file'].endswith('.duckdb'):
             type_errors.append('database_file: must end with .duckdb')
 
-    # Validate update_type if provided
     if 'update_type' in config and config['update_type'] is not None:
         if config['update_type'] not in ('s3', 'web'):
             type_errors.append("update_type: must be 's3' or 'web'")
 
-    # Validate bucket is provided if update_type is s3
     if config.get('update_type') == 's3' and 'bucket' not in config:
         type_errors.append("bucket: required when update_type is 's3'")
 
-    # Build error message
     errors = []
     if missing_fields:
         errors.append(f'Missing required fields: {", ".join(missing_fields)}')

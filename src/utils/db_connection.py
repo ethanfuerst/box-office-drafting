@@ -7,6 +7,12 @@ from dotenv import load_dotenv
 
 from src import project_root
 from src.utils.config_types import ConfigDict
+from src.utils.constants import (
+    DUCKDB_EXTENSION_HTTPFS,
+    S3_ENDPOINT,
+    S3_REGION,
+    S3_SECRET_TYPE,
+)
 
 load_dotenv()
 
@@ -40,14 +46,14 @@ class DuckDBConnection:
 
         self.connection.execute(
             f'''
-            install httpfs;
-            load httpfs;
+            install {DUCKDB_EXTENSION_HTTPFS};
+            load {DUCKDB_EXTENSION_HTTPFS};
             CREATE OR REPLACE SECRET {access_type}_secret (
-                TYPE S3,
+                TYPE {S3_SECRET_TYPE},
                 KEY_ID '{os.getenv(s3_access_key_id_var_name)}',
                 SECRET '{os.getenv(s3_secret_access_key_var_name)}',
-                REGION 'nyc3',
-                ENDPOINT 'nyc3.digitaloceanspaces.com'
+                REGION '{S3_REGION}',
+                ENDPOINT '{S3_ENDPOINT}'
             );
             '''
         )
