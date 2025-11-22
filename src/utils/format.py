@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Any, Dict, List, Union
 
 
@@ -16,8 +17,9 @@ def remove_comments(obj: Union[Dict, List]) -> Union[Dict, List]:
         return obj
 
 
-def load_format_config(file_path: str) -> Dict[str, Any]:
+def load_format_config(file_path: Path | str) -> Dict[str, Any]:
     '''Load a JSON format configuration file and remove comments.'''
-    with open(file_path, 'r') as file:
+    file_path_obj = Path(file_path)
+    with file_path_obj.open('r') as file:
         config = json.load(file)
     return remove_comments(config)

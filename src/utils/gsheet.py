@@ -2,11 +2,13 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 
 import gspread_formatting as gsf
 from dotenv import load_dotenv
 from gspread import service_account_from_dict
 
+from src import project_root
 from src.utils.config_types import ConfigDict
 from src.utils.constants import DATETIME_FORMAT
 from src.utils.db_connection import duckdb_connection
@@ -84,12 +86,16 @@ class GoogleSheetDashboard:
             (
                 self.scoreboard_df,
                 'B4',
-                load_format_config('src/assets/scoreboard_format.json'),
+                load_format_config(
+                    project_root / 'src' / 'assets' / 'scoreboard_format.json'
+                ),
             ),
             (
                 self.released_movies_df,
                 'I4',
-                load_format_config('src/assets/released_movies_format.json'),
+                load_format_config(
+                    project_root / 'src' / 'assets' / 'released_movies_format.json'
+                ),
             ),
         ]
 
@@ -119,7 +125,7 @@ class GoogleSheetDashboard:
                             '13', str(self.better_picks_row_num + 1)
                         ): value
                         for key, value in load_format_config(
-                            'src/assets/worst_picks_format.json'
+                            project_root / 'src' / 'assets' / 'worst_picks_format.json'
                         ).items()
                     },
                 )
@@ -398,7 +404,7 @@ def log_min_revenue_info(
         )
 
 
-def load_dashboard_data(config_path: str) -> None:
+def load_dashboard_data(config_path: Path | str) -> None:
     '''Load configuration and update the Google Sheet dashboard.'''
     config = get_config_dict(config_path)
     gsheet_dashboard = GoogleSheetDashboard(config)
