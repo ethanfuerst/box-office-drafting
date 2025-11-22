@@ -1,10 +1,11 @@
-import ssl
 import typing as t
 from datetime import datetime, timezone
 
 import pandas as pd
 from pandas import read_html
 from sqlmesh import ExecutionContext, model
+
+from utils.ssl_context import unverified_ssl_context
 
 
 @model(
@@ -46,9 +47,8 @@ def execute(
         result_df = context.engine_adapter.fetchdf(s3_query)
         print(result_df.head())
     else:
-        ssl._create_default_https_context = ssl._create_unverified_context
-
-        df = read_html(f'https://www.boxofficemojo.com/year/world/{year}')[0]
+        with unverified_ssl_context():
+            df = read_html(f'https://www.boxofficemojo.com/year/world/{year}')[0]
 
         result_df = df.copy()
         result_df['title'] = result_df['Release Group']

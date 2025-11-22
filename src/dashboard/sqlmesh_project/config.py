@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from sqlmesh.core.config import (
     Config,
@@ -8,11 +9,18 @@ from sqlmesh.core.config import (
 )
 
 from src import project_root
+from src.utils.config_types import ConfigDict
+from src.utils.constants import (
+    DUCKDB_EXTENSION_HTTPFS,
+    S3_ENDPOINT,
+    S3_REGION,
+    S3_SECRET_TYPE,
+)
 from src.utils.read_config import get_config_dict
 
 
-def get_sqlmesh_config(config_path: str) -> Config:
-    config = get_config_dict(config_path)
+def get_sqlmesh_config(config_path: Path | str) -> Config:
+    config: ConfigDict = get_config_dict(config_path)
     database_file = config.get('database_file')
 
     # Get S3 credential environment variable names (handle both naming conventions)
@@ -31,9 +39,9 @@ def get_sqlmesh_config(config_path: str) -> Config:
         if key_id and secret:
             secrets = [
                 {
-                    'type': 'S3',
-                    'region': 'nyc3',
-                    'endpoint': 'nyc3.digitaloceanspaces.com',
+                    'type': S3_SECRET_TYPE,
+                    'region': S3_REGION,
+                    'endpoint': S3_ENDPOINT,
                     'key_id': key_id,
                     'secret': secret,
                 },
@@ -48,7 +56,7 @@ def get_sqlmesh_config(config_path: str) -> Config:
                         project_root / 'src' / 'duckdb_databases' / database_file
                     ),
                     extensions=[
-                        {'name': 'httpfs'},
+                        {'name': DUCKDB_EXTENSION_HTTPFS},
                     ],
                     secrets=secrets,
                 )

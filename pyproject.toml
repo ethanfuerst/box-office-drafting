@@ -5,11 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "black>=25.9.0",
     "duckdb>=1.4.1",
     "gspread>=6.2.1",
     "gspread-formatting>=1.2.1",
-    "isort>=7.0.0",
     "lxml>=6.0.2",
     "modal>=1.2.1",
     "pandas>=2.3.3",
@@ -29,10 +27,15 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
 
-[tool.black]
+[tool.ruff]
 line-length = 88
-target-version = ["py310"]
-skip-string-normalization = true
+target-version = "py312"
+
+[tool.ruff.format]
+quote-style = "single"
+line-ending = "auto"
+indent-style = "space"
+skip-magic-trailing-comma = false
 
 [tool.isort]
 profile = "black"
@@ -45,5 +48,7 @@ ensure_newline_before_comments = true
 
 [dependency-groups]
 dev = [
+    "isort>=7.0.0",
     "pre-commit>=4.4.0",
+    "ruff>=0.8.0",
 ]

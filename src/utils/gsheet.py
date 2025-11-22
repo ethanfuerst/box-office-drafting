@@ -2,17 +2,21 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Dict
+from pathlib import Path
 
 import gspread_formatting as gsf
 from dotenv import load_dotenv
 from gspread import service_account_from_dict
 
-from src.utils.db_connection import DuckDBConnection
+from src import project_root
+from src.utils.config_types import ConfigDict
+from src.utils.constants import DATETIME_FORMAT
+from src.utils.db_connection import duckdb_connection
 from src.utils.format import load_format_config
 from src.utils.gspread_format import df_to_sheet
 from src.utils.logging_config import setup_logging
 from src.utils.query import table_to_df
+from src.utils.read_config import get_config_dict
 
 setup_logging()
 
@@ -20,7 +24,8 @@ load_dotenv()
 
 
 class GoogleSheetDashboard:
-    def __init__(self, config: Dict):
+    def __init__(self, config: ConfigDict) -> None:
+        '''Initialize a Google Sheet dashboard with data from DuckDB.'''
         self.config = config
         self.year = config['year']
         self.gspread_credentials_name = config.get(
@@ -81,12 +86,16 @@ class GoogleSheetDashboard:
             (
                 self.scoreboard_df,
                 'B4',
-                load_format_config('src/assets/scoreboard_format.json'),
+                load_format_config(
+                    project_root / 'src' / 'assets' / 'scoreboard_format.json'
+                ),
             ),
             (
                 self.released_movies_df,
                 'I4',
-                load_format_config('src/assets/released_movies_format.json'),
+                load_format_config(
+                    project_root / 'src' / 'assets' / 'released_movies_format.json'
+                ),
             ),
         ]
 
@@ -116,7 +125,7 @@ class GoogleSheetDashboard:
                             '13', str(self.better_picks_row_num + 1)
                         ): value
                         for key, value in load_format_config(
-                            'src/assets/worst_picks_format.json'
+                            project_root / 'src' / 'assets' / 'worst_picks_format.json'
                         ).items()
                     },
                 )
@@ -125,6 +134,7 @@ class GoogleSheetDashboard:
         self.setup_worksheet()
 
     def setup_worksheet(self) -> None:
+        '''Create and configure the Google Sheet worksheet.'''
         gspread_credentials_key = self.gspread_credentials_name
         gspread_credentials = os.getenv(gspread_credentials_key)
 
@@ -150,7 +160,10 @@ class GoogleSheetDashboard:
         self.worksheet = sh.worksheet(worksheet_title)
 
 
-def update_dashboard(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> None:
+def update_dashboard(
+    gsheet_dashboard: GoogleSheetDashboard, config: ConfigDict
+) -> None:
+    '''Update the Google Sheet with dashboard data and metadata.'''
     for element in gsheet_dashboard.dashboard_elements:
         df_to_sheet(
             df=element[0],
@@ -164,25 +177,22 @@ def update_dashboard(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> No
         and len(gsheet_dashboard.released_movies_df) > 0
     )
 
-    log_string = f'Dashboard Last Updated\n{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")} UTC'
+    log_string = f'Dashboard Last Updated\n{datetime.now(timezone.utc).strftime(DATETIME_FORMAT)} UTC'
 
     if dashboard_done_updating:
         log_string += '\nDashboard is done updating\nand can be removed from the etl'
 
-    duckdb_con = DuckDBConnection(config)
-
-    published_timestamp_of_most_recent_data = duckdb_con.query(
-        f'''
-            select max(published_timestamp_utc) as published_timestamp_utc
-            from cleaned.box_office_mojo_dump
-        '''
-    ).fetchnumpy()['published_timestamp_utc'][0]
-
-    duckdb_con.close()
+    with duckdb_connection(config) as duckdb_con:
+        published_timestamp_of_most_recent_data = duckdb_con.query(
+            '''
+                select max(published_timestamp_utc) as published_timestamp_utc
+                from cleaned.box_office_mojo_dump
+            '''
+        ).fetchnumpy()['published_timestamp_utc'][0]
 
     # Convert numpy.datetime64 to Python datetime
     dt = published_timestamp_of_most_recent_data.item()
-    log_string += f'\nData Updated Through\n{dt.strftime("%Y-%m-%d %H:%M:%S")} UTC'
+    log_string += f'\nData Updated Through\n{dt.strftime(DATETIME_FORMAT)} UTC'
 
     # Adding last updated header
     gsheet_dashboard.worksheet.update(
@@ -269,6 +279,7 @@ def update_dashboard(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> No
 
 
 def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
+    '''Update section titles in the Google Sheet.'''
     gsheet_dashboard.worksheet.update(
         values=[[gsheet_dashboard.dashboard_name]], range_name='B2'
     )
@@ -299,6 +310,7 @@ def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
 
 
 def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None:
+    '''Apply conditional formatting rules to the Google Sheet.'''
     still_in_theater_rule = gsf.ConditionalFormatRule(
         ranges=[gsf.GridRange.from_a1_range('X5:X', gsheet_dashboard.worksheet)],
         booleanRule=gsf.BooleanRule(
@@ -317,6 +329,7 @@ def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None
 
 
 def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
+    '''Log movies that are drafted but missing from the scoreboard.'''
     draft_df = table_to_df(
         gsheet_dashboard.config,
         'cleaned.drafter',
@@ -336,48 +349,48 @@ def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
         logging.info('All movies are on the scoreboard.')
 
 
-def log_min_revenue_info(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -> None:
-    duckdb_con = DuckDBConnection(config)
-
-    min_revenue_of_most_recent_data = duckdb_con.query(
-        f'''
-        with most_recent_data as (
-            select title, revenue
-            from raw.box_office_mojo_dump where year_part = {gsheet_dashboard.year}
-            qualify rank() over (order by loaded_date desc) = 1
-            order by 2 desc
-        )
-
-        select title, revenue
-        from most_recent_data qualify row_number() over (order by revenue asc) = 1;
-        '''
-    ).fetchnumpy()['revenue'][0]
-
-    logging.info(
-        f'Minimum revenue of most recent data: {min_revenue_of_most_recent_data}'
-    )
-
-    movies_under_min_revenue = (
-        duckdb_con.query(
+def log_min_revenue_info(
+    gsheet_dashboard: GoogleSheetDashboard, config: ConfigDict
+) -> None:
+    '''Log movies with revenue below the minimum threshold.'''
+    with duckdb_connection(config) as duckdb_con:
+        min_revenue_of_most_recent_data = duckdb_con.query(
             f'''
-            with raw_data as (
+            with most_recent_data as (
                 select title, revenue
-                from raw.box_office_mojo_dump
-                where year_part = {gsheet_dashboard.year}
-                qualify row_number() over (partition by title order by loaded_date desc) = 1
+                from raw.box_office_mojo_dump where year_part = {gsheet_dashboard.year}
+                qualify rank() over (order by loaded_date desc) = 1
+                order by 2 desc
             )
 
-            select raw_data.title from raw_data
-            inner join combined.base_query as base_query
-                on raw_data.title = base_query.title
-            where raw_data.revenue <= {min_revenue_of_most_recent_data}
+            select title, revenue
+            from most_recent_data qualify row_number() over (order by revenue asc) = 1;
             '''
-        )
-        .fetchnumpy()['title']
-        .tolist()
-    )
+        ).fetchnumpy()['revenue'][0]
 
-    duckdb_con.close()
+        logging.info(
+            f'Minimum revenue of most recent data: {min_revenue_of_most_recent_data}'
+        )
+
+        movies_under_min_revenue = (
+            duckdb_con.query(
+                f'''
+                with raw_data as (
+                    select title, revenue
+                    from raw.box_office_mojo_dump
+                    where year_part = {gsheet_dashboard.year}
+                    qualify row_number() over (partition by title order by loaded_date desc) = 1
+                )
+
+                select raw_data.title from raw_data
+                inner join combined.base_query as base_query
+                    on raw_data.title = base_query.title
+                where raw_data.revenue <= {min_revenue_of_most_recent_data}
+                '''
+            )
+            .fetchnumpy()['title']
+            .tolist()
+        )
 
     if movies_under_min_revenue:
         logging.info(
@@ -391,7 +404,9 @@ def log_min_revenue_info(gsheet_dashboard: GoogleSheetDashboard, config: Dict) -
         )
 
 
-def load(config: Dict) -> None:
+def load_dashboard_data(config_path: Path | str) -> None:
+    '''Load configuration and update the Google Sheet dashboard.'''
+    config = get_config_dict(config_path)
     gsheet_dashboard = GoogleSheetDashboard(config)
 
     update_dashboard(gsheet_dashboard, config)
