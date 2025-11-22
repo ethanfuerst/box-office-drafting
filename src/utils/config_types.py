@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, NotRequired, TypedDict, cast
 
 
@@ -98,6 +99,14 @@ def validate_config(config: ConfigDict) -> ConfigDict:
     if 'database_file' in config and isinstance(config['database_file'], str):
         if not config['database_file'].endswith('.duckdb'):
             type_errors.append('database_file: must end with .duckdb')
+
+    if 'year' in config and isinstance(config['year'], int):
+        current_year = datetime.now(timezone.utc).year
+        valid_years = [current_year - 1, current_year]
+        if config['year'] not in valid_years:
+            type_errors.append(
+                f"year: must be {current_year - 1} or {current_year}, got {config['year']}"
+            )
 
     if 'update_type' in config and config['update_type'] is not None:
         if config['update_type'] not in ('s3', 'web'):
