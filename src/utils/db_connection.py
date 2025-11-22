@@ -1,17 +1,18 @@
 import os
 from contextlib import contextmanager
-from typing import Any, Dict, Iterator
+from typing import Any, Iterator
 
 import duckdb
 from dotenv import load_dotenv
 
 from src import project_root
+from src.utils.config_types import ConfigDict
 
 load_dotenv()
 
 
 class DuckDBConnection:
-    def __init__(self, config: Dict[str, Any], need_write_access: bool = False) -> None:
+    def __init__(self, config: ConfigDict, need_write_access: bool = False) -> None:
         '''Initialize a DuckDB connection with S3 configuration.'''
         database_name = (
             project_root / 'src' / 'duckdb_databases' / config.get('database_file')
@@ -25,7 +26,7 @@ class DuckDBConnection:
         self.need_write_access = need_write_access
         self._configure_connection(config)
 
-    def _configure_connection(self, config: Dict[str, Any]) -> None:
+    def _configure_connection(self, config: ConfigDict) -> None:
         '''Configure S3 credentials for the DuckDB connection.'''
         access_type = 'write' if self.need_write_access else 'read'
         s3_access_key_id_var_name = config.get(
@@ -70,7 +71,7 @@ class DuckDBConnection:
 
 @contextmanager
 def duckdb_connection(
-    config: Dict[str, Any], need_write_access: bool = False
+    config: ConfigDict, need_write_access: bool = False
 ) -> Iterator[DuckDBConnection]:
     '''
     Context manager for DuckDB connections.
@@ -78,7 +79,7 @@ def duckdb_connection(
     Ensures connections are properly closed even if an exception occurs.
 
     Args:
-        config: Configuration dictionary containing database_file and S3 credentials
+        config: Configuration dictionary containing database_file and S3 credentials.
         need_write_access: Whether write access is needed (affects S3 secret naming)
 
     Yields:

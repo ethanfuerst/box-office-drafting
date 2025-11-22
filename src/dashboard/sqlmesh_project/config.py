@@ -8,11 +8,12 @@ from sqlmesh.core.config import (
 )
 
 from src import project_root
+from src.utils.config_types import ConfigDict
 from src.utils.read_config import get_config_dict
 
 
 def get_sqlmesh_config(config_path: str) -> Config:
-    config = get_config_dict(config_path)
+    config: ConfigDict = get_config_dict(config_path)
     database_file = config.get('database_file')
 
     # Get S3 credential environment variable names (handle both naming conventions)

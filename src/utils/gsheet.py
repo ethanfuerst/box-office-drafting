@@ -2,12 +2,12 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict
 
 import gspread_formatting as gsf
 from dotenv import load_dotenv
 from gspread import service_account_from_dict
 
+from src.utils.config_types import ConfigDict
 from src.utils.db_connection import duckdb_connection
 from src.utils.format import load_format_config
 from src.utils.gspread_format import df_to_sheet
@@ -23,7 +23,7 @@ DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 
 class GoogleSheetDashboard:
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: ConfigDict) -> None:
         '''Initialize a Google Sheet dashboard with data from DuckDB.'''
         self.config = config
         self.year = config['year']
@@ -156,7 +156,7 @@ class GoogleSheetDashboard:
 
 
 def update_dashboard(
-    gsheet_dashboard: GoogleSheetDashboard, config: Dict[str, Any]
+    gsheet_dashboard: GoogleSheetDashboard, config: ConfigDict
 ) -> None:
     '''Update the Google Sheet with dashboard data and metadata.'''
     for element in gsheet_dashboard.dashboard_elements:
@@ -345,7 +345,7 @@ def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
 
 
 def log_min_revenue_info(
-    gsheet_dashboard: GoogleSheetDashboard, config: Dict[str, Any]
+    gsheet_dashboard: GoogleSheetDashboard, config: ConfigDict
 ) -> None:
     '''Log movies with revenue below the minimum threshold.'''
     with duckdb_connection(config) as duckdb_con:
