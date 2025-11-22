@@ -1,14 +1,11 @@
 import logging
 import os
-import ssl
 from pathlib import Path
 
 from sqlmesh.core.context import Context
 
 from src import project_root
 from src.utils.gsheet import load_dashboard_data
-
-ssl._create_default_https_context = ssl._create_unverified_context
 
 
 def run_sqlmesh_plan(config_path: Path | str) -> None:
