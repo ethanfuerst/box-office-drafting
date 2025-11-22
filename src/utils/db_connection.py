@@ -1,6 +1,6 @@
 import os
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any, Iterator, cast
 
 import duckdb
 from dotenv import load_dotenv
@@ -35,13 +35,15 @@ class DuckDBConnection:
     def _configure_connection(self, config: ConfigDict) -> None:
         '''Configure S3 credentials for the DuckDB connection.'''
         access_type = 'write' if self.need_write_access else 'read'
-        s3_access_key_id_var_name = config.get(
-            f's3_{access_type}_access_key_id_var_name',
-            'S3_ACCESS_KEY_ID',
+        s3_access_key_id_var_name = cast(
+            str,
+            config.get(f's3_{access_type}_access_key_id_var_name', 'S3_ACCESS_KEY_ID'),
         )
-        s3_secret_access_key_var_name = config.get(
-            f's3_{access_type}_secret_access_key_var_name',
-            'S3_SECRET_ACCESS_KEY',
+        s3_secret_access_key_var_name = cast(
+            str,
+            config.get(
+                f's3_{access_type}_secret_access_key_var_name', 'S3_SECRET_ACCESS_KEY'
+            ),
         )
 
         self.connection.execute(

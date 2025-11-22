@@ -1,4 +1,4 @@
-from typing import NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict, cast
 
 
 class ConfigDict(TypedDict):
@@ -86,11 +86,14 @@ def validate_config(config: ConfigDict) -> ConfigDict:
     for field, expected_type in required_fields.items():
         if field not in config:
             missing_fields.append(field)
-        elif not isinstance(config[field], expected_type):
-            actual_type = type(config[field]).__name__
-            type_errors.append(
-                f'{field}: expected {expected_type.__name__}, got {actual_type}'
-            )
+        else:
+            # Use cast to help mypy understand the key access
+            field_value = cast(Any, config.get(field))
+            if not isinstance(field_value, expected_type):
+                actual_type = type(field_value).__name__
+                type_errors.append(
+                    f'{field}: expected {expected_type.__name__}, got {actual_type}'
+                )
 
     if 'database_file' in config and isinstance(config['database_file'], str):
         if not config['database_file'].endswith('.duckdb'):

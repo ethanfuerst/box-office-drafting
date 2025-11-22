@@ -184,7 +184,7 @@ def update_dashboard(
 
     with duckdb_connection(config) as duckdb_con:
         published_timestamp_of_most_recent_data = duckdb_con.query(
-            f'''
+            '''
                 select max(published_timestamp_utc) as published_timestamp_utc
                 from cleaned.box_office_mojo_dump
             '''
