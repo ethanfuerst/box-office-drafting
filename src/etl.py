@@ -18,7 +18,7 @@ def run_sqlmesh_plan(config_path: Path | str) -> None:
         paths=project_root / 'src' / 'dashboard' / 'sqlmesh_project'
     )
 
-    plan = sqlmesh_context.plan(environment='prod', restate_models=['raw.*'])
+    plan = sqlmesh_context.plan()
     sqlmesh_context.apply(plan)
     _ = sqlmesh_context.run()
 
