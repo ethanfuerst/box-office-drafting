@@ -354,7 +354,7 @@ def log_min_revenue_info(
             f'''
             with most_recent_data as (
                 select title, revenue
-                from raw.box_office_mojo_dump where year_part = {gsheet_dashboard.year}
+                from raw.box_office_mojo_dump where release_year = {gsheet_dashboard.year}
                 qualify rank() over (order by loaded_date desc) = 1
                 order by 2 desc
             )
@@ -374,7 +374,7 @@ def log_min_revenue_info(
                 with raw_data as (
                     select title, revenue
                     from raw.box_office_mojo_dump
-                    where year_part = {gsheet_dashboard.year}
+                    where release_year = {gsheet_dashboard.year}
                     qualify row_number() over (partition by title order by loaded_date desc) = 1
                 )
 

@@ -44,12 +44,8 @@ def update_dashboards():
         return
 
     for config_path in config_files:
-        try:
-            config_dict = get_config_dict(config_path)
-            google_sheet_sync(config_dict=config_dict)
-        except Exception as e:
-            print(f'Error processing {config_path.name}: {e}')
-            continue
+        config_dict = get_config_dict(config_path)
+        google_sheet_sync(config_dict=config_dict)
 
 
 if __name__ == '__main__':

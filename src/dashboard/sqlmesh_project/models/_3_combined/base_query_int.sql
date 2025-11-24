@@ -10,7 +10,7 @@ with raw_data as (
         , domestic_rev
         , foreign_rev
         , loaded_date
-        , year_part
+        , release_year
         , min(loaded_date) over (
             partition by title
         ) as first_seen_date
@@ -30,7 +30,7 @@ with raw_data as (
         , loaded_date
         , first_seen_date
     from raw_data
-    where year_part == @year
+    where release_year == @year
     qualify row_number() over (
         partition by title
         order by loaded_date desc
