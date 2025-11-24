@@ -1,6 +1,6 @@
 import os
 from contextlib import contextmanager
-from typing import Any, Iterator, cast
+from typing import Any, Iterator
 
 import duckdb
 from dotenv import load_dotenv
@@ -33,24 +33,15 @@ class DuckDBConnection:
         self._configure_connection(config)
 
     def _configure_connection(self, config: ConfigDict) -> None:
-        '''Configure S3 credentials for the DuckDB connection.'''
-        access_type = 'write' if self.need_write_access else 'read'
-        s3_access_key_id_var_name = cast(
-            str,
-            config.get(f's3_{access_type}_access_key_id_var_name', 'S3_ACCESS_KEY_ID'),
-        )
-        s3_secret_access_key_var_name = cast(
-            str,
-            config.get(
-                f's3_{access_type}_secret_access_key_var_name', 'S3_SECRET_ACCESS_KEY'
-            ),
-        )
+        '''Configure S3 credentials for the DuckDB connection. Only read access is required.'''
+        s3_access_key_id_var_name = config.get('s3_access_key_id_var_name')
+        s3_secret_access_key_var_name = config.get('s3_secret_access_key_var_name')
 
         self.connection.execute(
             f'''
             install {DUCKDB_EXTENSION_HTTPFS};
             load {DUCKDB_EXTENSION_HTTPFS};
-            CREATE OR REPLACE SECRET {access_type}_secret (
+            CREATE OR REPLACE SECRET read_secret (
                 TYPE {S3_SECRET_TYPE},
                 KEY_ID '{os.getenv(s3_access_key_id_var_name)}',
                 SECRET '{os.getenv(s3_secret_access_key_var_name)}',
@@ -85,10 +76,11 @@ def duckdb_connection(
     Context manager for DuckDB connections.
 
     Ensures connections are properly closed even if an exception occurs.
+    Only read access to S3 is required.
 
     Args:
         config: Configuration dictionary containing database_file and S3 credentials.
-        need_write_access: Whether write access is needed (affects S3 secret naming)
+        need_write_access: Whether write access is needed (deprecated, not used)
 
     Yields:
         DuckDBConnection: A configured DuckDB connection
