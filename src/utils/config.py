@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, NotRequired, TypedDict, cast
+
+import yaml
 
 
 class ConfigDict(TypedDict):
@@ -15,6 +18,7 @@ class ConfigDict(TypedDict):
             or 'web' to scrape from boxofficemojo.com.
         gspread_credentials_name (str): Environment variable name containing Google Sheets
             service account credentials JSON.
+        path (Path | str): Path to the configuration file. Added automatically by get_config_dict.
 
     Optional Fields:
         bucket (str): S3 bucket name for reading parquet files. Required if update_type is 's3'.
@@ -33,11 +37,36 @@ class ConfigDict(TypedDict):
     database_file: str
     update_type: str
     gspread_credentials_name: str
+    path: Path | str
 
     # Optional fields
     s3_access_key_id_var_name: NotRequired[str]
     s3_secret_access_key_var_name: NotRequired[str]
     bucket: NotRequired[str]
+
+
+def read_config(config_path: Path | str) -> dict:
+    '''Load and parse a YAML configuration file.
+
+    Args:
+        config_path: Path to the YAML configuration file.
+
+    Returns:
+        dict: Parsed configuration dictionary.
+
+    Raises:
+        FileNotFoundError: If the config file doesn't exist.
+        ValueError: If the configuration file is empty or invalid.
+        yaml.YAMLError: If YAML parsing fails.
+    '''
+    config_path_obj = Path(config_path)
+    with config_path_obj.open('r') as yaml_in:
+        yaml_object = yaml.safe_load(yaml_in)
+
+    if yaml_object is None:
+        raise ValueError(f'Configuration file {config_path_obj} is empty or invalid')
+
+    return yaml_object
 
 
 def validate_config(config: ConfigDict) -> ConfigDict:
@@ -114,3 +143,31 @@ def validate_config(config: ConfigDict) -> ConfigDict:
         raise ValueError('Configuration validation failed:\n' + '\n'.join(errors))
 
     return config
+
+
+
+def get_config_dict(config_path: Path | str) -> ConfigDict:
+    '''
+    Load, parse, and validate a YAML configuration file.
+
+    Args:
+        config_path: Path to the YAML configuration file.
+
+    Returns:
+        ConfigDict: Validated configuration dictionary with 'path' field added.
+
+    Raises:
+        FileNotFoundError: If the config file doesn't exist.
+        ValueError: If configuration validation fails.
+        yaml.YAMLError: If YAML parsing fails.
+    '''
+    config_path_obj = Path(config_path)
+    with config_path_obj.open('r') as yaml_in:
+        yaml_object = yaml.safe_load(yaml_in)
+
+    if yaml_object is None:
+        raise ValueError(f'Configuration file {config_path_obj} is empty or invalid')
+
+    yaml_object['path'] = config_path_obj
+
+    return validate_config(yaml_object)

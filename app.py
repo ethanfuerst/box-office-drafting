@@ -2,6 +2,7 @@ import modal
 
 from src import project_root
 from src.etl import google_sheet_sync
+from src.utils.config import get_config_dict
 
 app = modal.App('box-office-drafting')
 
@@ -34,8 +35,21 @@ modal_image = (
     ),
 )
 def update_dashboards():
-    google_sheet_sync(config_path=project_root / 'src/config/friends_2025.yml')
-    google_sheet_sync(config_path=project_root / 'src/config/ethan_and_noah_2025.yml')
+    '''Discover and sync all valid YAML config files in src/config/.'''
+    config_dir = project_root / 'src' / 'config'
+    config_files = sorted(config_dir.glob('*.yml'))
+
+    if not config_files:
+        print(f'No config files found in {config_dir}')
+        return
+
+    for config_path in config_files:
+        try:
+            config_dict = get_config_dict(config_path)
+            google_sheet_sync(config_dict=config_dict)
+        except Exception as e:
+            print(f'Error processing {config_path.name}: {e}')
+            continue
 
 
 if __name__ == '__main__':

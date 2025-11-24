@@ -9,14 +9,13 @@ from sqlmesh.core.config import (
 )
 
 from src import project_root
-from src.utils.config_types import ConfigDict
+from src.utils.config import ConfigDict, get_config_dict
 from src.utils.constants import (
     DUCKDB_EXTENSION_HTTPFS,
     S3_ENDPOINT,
     S3_REGION,
     S3_SECRET_TYPE,
 )
-from src.utils.read_config import get_config_dict
 
 
 def get_sqlmesh_config(config_path: Path | str) -> Config:

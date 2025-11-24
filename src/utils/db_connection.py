@@ -6,7 +6,7 @@ import duckdb
 from dotenv import load_dotenv
 
 from src import project_root
-from src.utils.config_types import ConfigDict
+from src.utils.config import ConfigDict
 from src.utils.constants import (
     DUCKDB_EXTENSION_HTTPFS,
     S3_ENDPOINT,
@@ -18,10 +18,10 @@ load_dotenv()
 
 
 class DuckDBConnection:
-    def __init__(self, config: ConfigDict, need_write_access: bool = False) -> None:
+    def __init__(self, config_dict: ConfigDict, need_write_access: bool = False) -> None:
         '''Initialize a DuckDB connection with S3 configuration.'''
         database_name = (
-            project_root / 'src' / 'duckdb_databases' / config.get('database_file')
+            project_root / 'src' / 'duckdb_databases' / config_dict.get('database_file')
         )
 
         self.connection = duckdb.connect(
@@ -30,12 +30,12 @@ class DuckDBConnection:
         )
 
         self.need_write_access = need_write_access
-        self._configure_connection(config)
+        self._configure_connection(config_dict)
 
-    def _configure_connection(self, config: ConfigDict) -> None:
+    def _configure_connection(self, config_dict: ConfigDict) -> None:
         '''Configure S3 credentials for the DuckDB connection. Only read access is required.'''
-        s3_access_key_id_var_name = config.get('s3_access_key_id_var_name')
-        s3_secret_access_key_var_name = config.get('s3_secret_access_key_var_name')
+        s3_access_key_id_var_name = config_dict.get('s3_access_key_id_var_name')
+        s3_secret_access_key_var_name = config_dict.get('s3_secret_access_key_var_name')
 
         self.connection.execute(
             f'''
@@ -70,7 +70,7 @@ class DuckDBConnection:
 
 @contextmanager
 def duckdb_connection(
-    config: ConfigDict, need_write_access: bool = False
+    config_dict: ConfigDict, need_write_access: bool = False
 ) -> Iterator[DuckDBConnection]:
     '''
     Context manager for DuckDB connections.
@@ -79,17 +79,17 @@ def duckdb_connection(
     Only read access to S3 is required.
 
     Args:
-        config: Configuration dictionary containing database_file and S3 credentials.
+        config_dict: Configuration dictionary containing database_file and S3 credentials.
         need_write_access: Whether write access is needed (deprecated, not used)
 
     Yields:
         DuckDBConnection: A configured DuckDB connection
 
     Example:
-        >>> with duckdb_connection(config) as conn:
+        >>> with duckdb_connection(config_dict) as conn:
         ...     df = conn.df('SELECT * FROM my_table')
     '''
-    conn = DuckDBConnection(config, need_write_access)
+    conn = DuckDBConnection(config_dict, need_write_access)
     try:
         yield conn
     finally:

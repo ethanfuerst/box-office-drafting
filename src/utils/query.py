@@ -2,19 +2,19 @@ from typing import List, Optional
 
 from pandas import DataFrame
 
-from src.utils.config_types import ConfigDict
+from src.utils.config import ConfigDict
 from src.utils.db_connection import duckdb_connection
 
 
 def table_to_df(
-    config: ConfigDict,
+    config_dict: ConfigDict,
     table: str,
     columns: Optional[List[str]] = None,
 ) -> DataFrame:
     '''Load a SQL table into a pandas DataFrame.'''
-    catalog_name = config.get('database_file', '').replace('.duckdb', '')
+    catalog_name = config_dict.get('database_file', '').replace('.duckdb', '')
 
-    with duckdb_connection(config) as duckdb_con:
+    with duckdb_connection(config_dict) as duckdb_con:
         df = duckdb_con.df(f'select * from {catalog_name}.{table}')
 
     if columns:

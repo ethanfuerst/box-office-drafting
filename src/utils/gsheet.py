@@ -2,21 +2,19 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from pathlib import Path
 
 import gspread_formatting as gsf
 from dotenv import load_dotenv
 from gspread import service_account_from_dict
 
 from src import project_root
-from src.utils.config_types import ConfigDict
+from src.utils.config import ConfigDict
 from src.utils.constants import DATETIME_FORMAT
 from src.utils.db_connection import duckdb_connection
 from src.utils.format import load_format_config
 from src.utils.gspread_format import df_to_sheet
 from src.utils.logging_config import setup_logging
 from src.utils.query import table_to_df
-from src.utils.read_config import get_config_dict
 
 setup_logging()
 
@@ -24,15 +22,15 @@ load_dotenv()
 
 
 class GoogleSheetDashboard:
-    def __init__(self, config: ConfigDict) -> None:
+    def __init__(self, config_dict: ConfigDict) -> None:
         '''Initialize a Google Sheet dashboard with data from DuckDB.'''
-        self.config = config
-        self.year = config['year']
-        self.gspread_credentials_name = config['gspread_credentials_name']
-        self.dashboard_name = config['name']
-        self.sheet_name = config['sheet_name']
+        self.config = config_dict
+        self.year = self.config['year']
+        self.gspread_credentials_name = self.config['gspread_credentials_name']
+        self.dashboard_name = self.config['name']
+        self.sheet_name = self.config['sheet_name']
         self.released_movies_df = table_to_df(
-            config,
+            self.config,
             'combined.base_query',
             columns=[
                 'Rank',
@@ -55,7 +53,7 @@ class GoogleSheetDashboard:
         )
 
         self.scoreboard_df = table_to_df(
-            config,
+            config_dict,
             'dashboards.scoreboard',
             columns=[
                 'Name',
@@ -68,7 +66,7 @@ class GoogleSheetDashboard:
         )
 
         self.worst_picks_df = table_to_df(
-            config,
+            config_dict,
             'dashboards.worst_picks',
             columns=[
                 'Rank',
@@ -159,7 +157,7 @@ class GoogleSheetDashboard:
 
 
 def update_dashboard(
-    gsheet_dashboard: GoogleSheetDashboard, config: ConfigDict
+    gsheet_dashboard: GoogleSheetDashboard, config_dict: ConfigDict
 ) -> None:
     '''Update the Google Sheet with dashboard data and metadata.'''
     for element in gsheet_dashboard.dashboard_elements:
@@ -180,7 +178,7 @@ def update_dashboard(
     if dashboard_done_updating:
         log_string += '\nDashboard is done updating\nand can be removed from the etl'
 
-    with duckdb_connection(config) as duckdb_con:
+    with duckdb_connection(config_dict) as duckdb_con:
         published_timestamp_of_most_recent_data = duckdb_con.query(
             '''
                 select max(published_timestamp_utc) as published_timestamp_utc
@@ -329,7 +327,7 @@ def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None
 def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
     '''Log movies that are drafted but missing from the scoreboard.'''
     draft_df = table_to_df(
-        gsheet_dashboard.config,
+        gsheet_dashboard.config_dict,
         'cleaned.drafter',
     )
     released_movies = [
@@ -348,10 +346,10 @@ def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
 
 
 def log_min_revenue_info(
-    gsheet_dashboard: GoogleSheetDashboard, config: ConfigDict
+    gsheet_dashboard: GoogleSheetDashboard, config_dict: ConfigDict
 ) -> None:
     '''Log movies with revenue below the minimum threshold.'''
-    with duckdb_connection(config) as duckdb_con:
+    with duckdb_connection(config_dict) as duckdb_con:
         min_revenue_of_most_recent_data = duckdb_con.query(
             f'''
             with most_recent_data as (
@@ -402,13 +400,12 @@ def log_min_revenue_info(
         )
 
 
-def load_dashboard_data(config_path: Path | str) -> None:
+def load_dashboard_data(config_dict: ConfigDict) -> None:
     '''Load configuration and update the Google Sheet dashboard.'''
-    config = get_config_dict(config_path)
-    gsheet_dashboard = GoogleSheetDashboard(config)
+    gsheet_dashboard = GoogleSheetDashboard(config_dict)
 
-    update_dashboard(gsheet_dashboard, config)
+    update_dashboard(gsheet_dashboard, config_dict)
     update_titles(gsheet_dashboard)
     apply_conditional_formatting(gsheet_dashboard)
     log_missing_movies(gsheet_dashboard)
-    log_min_revenue_info(gsheet_dashboard, config)
+    log_min_revenue_info(gsheet_dashboard, config_dict)
