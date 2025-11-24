@@ -9,6 +9,6 @@ select
     , domestic_rev
     , foreign_rev
     , loaded_date
-    , year_part
+    , release_year
     , published_timestamp_utc
 from raw.box_office_mojo_dump

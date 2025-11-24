@@ -17,7 +17,7 @@ from utils.ssl_context import unverified_ssl_context
         'domestic_rev': 'int',
         'foreign_rev': 'int',
         'loaded_date': 'date',
-        'year_part': 'text',
+        'release_year': 'text',
         'published_timestamp_utc': 'timestamp',
     },
 )
@@ -40,7 +40,7 @@ def execute(
             domestic_rev,
             foreign_rev,
             cast(to_timestamp(loaded_date) as date) as loaded_date,
-            year_part,
+            release_year,
             cast(epoch_ms(published_timestamp_utc) as timestamp) as published_timestamp_utc
         from read_parquet('s3://{bucket}/published_tables/daily_ranks/data.parquet')"""
 
@@ -74,7 +74,7 @@ def execute(
             .fillna(0)
         )
         result_df['loaded_date'] = pd.Timestamp.now().date()
-        result_df['year_part'] = str(year)
+        result_df['release_year'] = str(year)
         result_df['published_timestamp_utc'] = pd.Timestamp.now(timezone.utc)
 
         result_df = result_df[
@@ -84,7 +84,7 @@ def execute(
                 'domestic_rev',
                 'foreign_rev',
                 'loaded_date',
-                'year_part',
+                'release_year',
                 'published_timestamp_utc',
             ]
         ].copy()
