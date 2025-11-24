@@ -327,7 +327,7 @@ def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None
 def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
     '''Log movies that are drafted but missing from the scoreboard.'''
     draft_df = table_to_df(
-        gsheet_dashboard.config_dict,
+        gsheet_dashboard.config,
         'cleaned.drafter',
     )
     released_movies = [
