@@ -23,29 +23,23 @@ def get_sqlmesh_config(config_path: Path | str) -> Config:
     config: ConfigDict = get_config_dict(config_path)
     database_file = config.get('database_file')
 
-    # Get S3 credential environment variable names (handle both naming conventions)
-    s3_read_access_key_name = config.get('s3_read_access_key_name') or config.get(
-        's3_read_access_key_id_var_name'
-    )
-    s3_read_secret_access_key_name = config.get(
-        's3_read_secret_access_key_name'
-    ) or config.get('s3_read_secret_access_key_var_name')
+    s3_access_key_id_var_name = config.get('s3_access_key_id_var_name')
+    s3_secret_access_key_var_name = config.get('s3_secret_access_key_var_name')
 
     # Build secrets list only if S3 credentials are configured
     secrets = []
-    if s3_read_access_key_name and s3_read_secret_access_key_name:
-        key_id = os.getenv(s3_read_access_key_name)
-        secret = os.getenv(s3_read_secret_access_key_name)
-        if key_id and secret:
-            secrets = [
-                {
-                    'type': S3_SECRET_TYPE,
-                    'region': S3_REGION,
-                    'endpoint': S3_ENDPOINT,
-                    'key_id': key_id,
-                    'secret': secret,
-                },
-            ]
+    key_id = os.getenv(s3_access_key_id_var_name)
+    secret = os.getenv(s3_secret_access_key_var_name)
+    if key_id and secret:
+        secrets = [
+            {
+                'type': S3_SECRET_TYPE,
+                'region': S3_REGION,
+                'endpoint': S3_ENDPOINT,
+                'key_id': key_id,
+                'secret': secret,
+            },
+        ]
 
     return Config(
         model_defaults=ModelDefaultsConfig(dialect='duckdb'),

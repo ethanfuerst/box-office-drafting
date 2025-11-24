@@ -28,9 +28,7 @@ class GoogleSheetDashboard:
         '''Initialize a Google Sheet dashboard with data from DuckDB.'''
         self.config = config
         self.year = config['year']
-        self.gspread_credentials_name = config.get(
-            'gspread_credentials_name', f'GSPREAD_CREDENTIALS_{self.year}'
-        )
+        self.gspread_credentials_name = config['gspread_credentials_name']
         self.dashboard_name = config['name']
         self.sheet_name = config['sheet_name']
         self.released_movies_df = table_to_df(
