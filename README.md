@@ -62,8 +62,8 @@ s3_secret_access_key_var_name: S3_SECRET_ACCESS_KEY
 ### Environment Variables
 Set environment variables referenced in your config:
 
-- `Google Sheets` - An env var named by `gspread_credentials_name` containing the service account credentials JSON with access to `sheet_name`.
-- `S3` (if `update_type: s3`) - Env vars named by `s3_access_key_id_var_name` and `s3_secret_access_key_var_name` with AWS credentials that can read from `bucket`.
+- `Google Sheets` - The environment variable specified by `gspread_credentials_name`, containing the service account credentials JSON with access to `sheet_name`.
+- `S3` (if `update_type: s3`) - The environment variables specified by `s3_access_key_id_var_name` and `s3_secret_access_key_var_name`, containing AWS credentials that can read from `bucket`.
 
 Example .env:
 
