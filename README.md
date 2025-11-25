@@ -108,7 +108,11 @@ The application runs on Modal with daily scheduled updates at 9 AM UTC. All conf
    ```
 
 3. **Create Modal Secret**:
-   Create a secret named `box-office-drafting-secrets` with the .env file as the value.
+   Create a secret named `box-office-drafting-secrets` containing all environment variables referenced in your config files:
+   ```bash
+   uv run modal secret create box-office-drafting-secrets
+   ```
+   When prompted, add each environment variable name and value (e.g., `GSPREAD_CREDENTIALS`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`).
 
 4. **Deploy**:
    ```bash
