@@ -1,6 +1,6 @@
 # box-office-drafting
 
-Automated box office draft tracking and scoring system that processes draft picks, calculates revenue-based scores, and updates Google Sheets dashboards.
+> Automated box office draft tracking and scoring system that processes draft picks, calculates revenue-based scores, and updates Google Sheets with a dashboard.
 
 ## Features
 
@@ -8,8 +8,7 @@ Automated box office draft tracking and scoring system that processes draft pick
 - **Flexible data sources**: Read box office data from S3 parquet files or scrape from Box Office Mojo
 - **Automated scoring**: Calculate scored revenue with round and movie multipliers
 - **Google Sheets integration**: Automatically update formatted dashboards with rankings, scoreboards, and worst picks
-- **SQLMesh pipeline**: Transform raw data through validated SQL models
-- **Scheduled updates**: Daily automated sync via Modal
+- **Scheduled updates**: Daily automated sync via [Modal](https://modal.com/)
 
 ## How It Works
 
@@ -18,21 +17,6 @@ Automated box office draft tracking and scoring system that processes draft pick
 3. **Scoring**: Calculates scored revenue using multipliers and applies draft rules
 4. **Dashboard generation**: Produces scoreboards, rankings, and "better pick" analysis
 5. **Sheet updates**: Writes formatted results to Google Sheets with conditional formatting
-
-## Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd box-office-drafting
-
-# Install dependencies
-uv sync
-
-# Install pre-commit hooks
-uv sync --group dev
-pre-commit install
-```
 
 ## Configuration
 
@@ -95,30 +79,8 @@ uv run python3 app.py
 
 The application runs on Modal with daily scheduled updates at 9 AM UTC. All config files in `src/config/` are automatically discovered and processed.
 
-#### Modal Setup
+### Deployment
 
-1. **Install Modal CLI**:
-   ```bash
-   uv add modal
-   ```
-
-2. **Authenticate**:
-   ```bash
-   uv run modal token new
-   ```
-
-3. **Create Modal Secret**:
-   Create a secret named `box-office-drafting-secrets` containing all environment variables referenced in your config files:
-   ```bash
-   uv run modal secret create box-office-drafting-secrets
-   ```
-   When prompted, add each environment variable name and value (e.g., `GSPREAD_CREDENTIALS`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`).
-
-4. **Deploy**:
-   ```bash
-   uv run modal deploy
-   ```
-
-## License
-
-[Add your license here]
+```bash
+uv run modal deploy app.py
+```
