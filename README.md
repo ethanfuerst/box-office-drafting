@@ -1,66 +1,73 @@
 # box-office-drafting
 
-> Automated box office draft tracking and scoring system that processes draft picks, calculates revenue-based scores, and updates Google Sheets with a dashboard.
+Automated box office draft tracking and scoring system that processes draft picks, calculates revenue-based scores, and updates Google Sheets dashboards. Designed to work with `box-office-tracking` S3 tables or directly with Box Office Mojo.
 
 ## Features
 
-- **Multi-league support**: Run multiple drafts from separate configuration files
-- **Flexible data sources**: Read box office data from S3 parquet files or scrape from Box Office Mojo
-- **Automated scoring**: Calculate scored revenue with round and movie multipliers
-- **Google Sheets integration**: Automatically update formatted dashboards with rankings, scoreboards, and worst picks
-- **Scheduled updates**: Daily automated sync via [Modal](https://modal.com/)
+- Multi-league support via separate config files
+- Flexible data sources (S3 Parquet or live web scrape)
+- Automated scoring with round and movie multipliers
+- Google Sheets dashboards (rankings, scoreboards, worst picks, “better picks”)
+- Daily scheduled sync via [Modal](https://modal.com/)
 
 ## How It Works
 
-1. **Data ingestion**: Loads draft picks, multipliers, and exclusions from Google Sheets
-2. **Box office data**: Fetches revenue data from S3 or scrapes Box Office Mojo
-3. **Scoring**: Calculates scored revenue using multipliers and applies draft rules
-4. **Dashboard generation**: Produces scoreboards, rankings, and "better pick" analysis
-5. **Sheet updates**: Writes formatted results to Google Sheets with conditional formatting
+1. **Data ingestion** - Loads draft picks, multipliers, and exclusions from Google Sheets.
+2. **Box office data** - Reads revenues from S3 (published tables from `box-office-tracking`) or scrapes Box Office Mojo.
+3. **Scoring** - Applies draft rules and multipliers to compute scored revenue.
+4. **Dashboard generation** - Builds standings, scoreboards, and “better pick” analysis.
+5. **Sheet updates** - Writes formatted results back to Google Sheets.
+
+## Installation
+
+```bash
+git clone https://github.com/your-org/box-office-drafting.git
+cd box-office-drafting
+uv sync
+```
 
 ## Configuration
-
-Create a YAML configuration file in `src/config/` for each draft:
+Create a YAML configuration file in src/config/ for each draft:
 
 ```yaml
 name: 2025 Fantasy Box Office Standings
 year: 2025
-update_type: s3
+update_type: s3         # or "web"
 sheet_name: 2025 Fantasy Box Office Draft
 gspread_credentials_name: GSPREAD_CREDENTIALS
 database_file: friends_2025.duckdb
+
+# Required if update_type == "s3"
 bucket: box-office-tracking
 s3_access_key_id_var_name: S3_ACCESS_KEY_ID
 s3_secret_access_key_var_name: S3_SECRET_ACCESS_KEY
 ```
 
-### Required Fields
+### Required fields
 
-- `year`: Draft year (current or previous year)
-- `name`: Display name for the dashboard
-- `sheet_name`: Google Sheet name to update
-- `database_file`: DuckDB database filename (must end with `.duckdb`)
-- `update_type`: Data source (`s3` or `web`)
-- `gspread_credentials_name`: Environment variable name for Google Sheets credentials
+- year - Draft year (typically current or previous year)
+- name - Display name for the dashboard
+- sheet_name - Google Sheet name to update
+- database_file - DuckDB database filename (must end with .duckdb)
+- update_type - Data source: s3 or web
+- gspread_credentials_name - Env var name containing Google Sheets credentials JSON
 
-### Optional Fields
+### Optional / conditional fields
+#### Used when update_type: s3
 
-- `bucket`: S3 bucket name (required if `update_type` is `s3`)
-- `s3_access_key_id_var_name`: S3 access key ID env var name (required if `update_type` is `s3`)
-- `s3_secret_access_key_var_name`: S3 secret access key env var name (required if `update_type` is `s3`)
+- `bucket` - S3 bucket name
+- `s3_access_key_id_var_name` - Env var name for S3 access key ID
+- `s3_secret_access_key_var_name` - Env var name for S3 secret access key
 
 ### Environment Variables
+Set environment variables referenced in your config:
 
-The script automatically sets `CONFIG_PATH` for each config file. You need to set environment variables with the names specified in your configuration file:
+- `Google Sheets` - An env var named by gspread_credentials_name containing the service account credentials JSON with access to sheet_name.
+- `S3` (if update_type: s3) - Env vars named by s3_access_key_id_var_name and s3_secret_access_key_var_name with AWS credentials that can read from bucket.
 
-- **Google Sheets credentials**: Set an environment variable with the name from `gspread_credentials_name` in your config. The value should be the Google Sheets service account credentials JSON string. These credentials must have read access to the Google Sheet specified in `sheet_name`.
+Example .env:
 
-- **S3 credentials** (if `update_type` is `s3`): Set environment variables with the names from `s3_access_key_id_var_name` and `s3_secret_access_key_var_name` in your config. These credentials must have read access to the S3 bucket specified in `bucket`.
-
-I recommend using a .env file to set these environment variables.
-
-Example (for the .env file):
-```
+```env
 GSPREAD_CREDENTIALS='{"type":"service_account",...}'
 S3_ACCESS_KEY_ID='your-access-key-id'
 S3_SECRET_ACCESS_KEY='your-secret-access-key'
@@ -68,19 +75,30 @@ S3_SECRET_ACCESS_KEY='your-secret-access-key'
 
 ## Usage
 
-### Local Development
+### Local development
+Run the app locally for all configs in src/config/:
 
 ```bash
-# Run locally
-uv run python3 app.py
+uv run python app.py
 ```
 
-### Deployment
-
-The application runs on Modal with daily scheduled updates at 9 AM UTC. All config files in `src/config/` are automatically discovered and processed.
-
-### Deployment
+### Modal deployment
+Deploy the scheduled job to Modal:
 
 ```bash
 uv run modal deploy app.py
 ```
+
+By default, the job is scheduled to run daily at 09:00 UTC. All config files in src/config/ are automatically discovered and processed.
+
+## Compatibility with box-office-tracking
+
+When using update_type: s3, this project expects the published tables produced by box-office-tracking:
+ - Each release of box-office-drafting targets a specific major version / S3 prefix from box-office-tracking.
+ - See the release notes and README in box-office-tracking for the current published table locations and schema guarantees.
+
+## Versioning
+This project uses semantic versioning (MAJOR.MINOR.PATCH). Breaking changes to the scoring rules, config format, or tracking-data contract will bump the major version.
+
+## License
+This project is licensed under the MIT license. See LICENSE for details.
