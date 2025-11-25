@@ -42,7 +42,7 @@ def execute(
             cast(to_timestamp(loaded_date) as date) as loaded_date,
             release_year,
             cast(epoch_ms(published_timestamp_utc) as timestamp) as published_timestamp_utc
-        from read_parquet('s3://{bucket}/published_tables/daily_ranks/data.parquet')"""
+        from read_parquet('s3://{bucket}/published_tables/daily_ranks/v1/data.parquet')"""
 
         result_df = context.engine_adapter.fetchdf(s3_query)
         print(result_df.head())
