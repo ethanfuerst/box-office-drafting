@@ -50,14 +50,14 @@ s3_secret_access_key_var_name: S3_SECRET_ACCESS_KEY
 - `sheet_name` - Google Sheet name to update
 - `draft_id` - Unique identifier for the draft (used to create the database file as `{draft_id}.duckdb`)
 - `update_type` - Data source: `s3` or `web`
-- `gspread_credentials_name` - Env var name containing Google Sheets credentials JSON
+- `gspread_credentials_name` - Environment variable name containing Google Sheets credentials JSON
 
 ### Optional / conditional fields
 #### Used when `update_type: s3`
 
 - `bucket` - S3 bucket name
-- `s3_access_key_id_var_name` - Env var name for S3 access key ID
-- `s3_secret_access_key_var_name` - Env var name for S3 secret access key
+- `s3_access_key_id_var_name` - Environment variable name for S3 access key ID
+- `s3_secret_access_key_var_name` - Environment variable name for S3 secret access key
 
 ### Environment Variables
 Set environment variables referenced in your config:
