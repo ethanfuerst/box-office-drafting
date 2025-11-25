@@ -27,7 +27,7 @@ uv sync
 ```
 
 ## Configuration
-Create a YAML configuration file in src/config/ for each draft:
+Create a YAML configuration file in `src/config/` for each draft:
 
 ```yaml
 name: 2025 Fantasy Box Office Standings
@@ -35,9 +35,9 @@ year: 2025
 update_type: s3         # or "web"
 sheet_name: 2025 Fantasy Box Office Draft
 gspread_credentials_name: GSPREAD_CREDENTIALS
-database_file: friends_2025.duckdb
+draft_id: friends_2025
 
-# Required if update_type == "s3"
+# Required if `update_type` == "s3"
 bucket: box-office-tracking
 s3_access_key_id_var_name: S3_ACCESS_KEY_ID
 s3_secret_access_key_var_name: S3_SECRET_ACCESS_KEY
@@ -45,15 +45,15 @@ s3_secret_access_key_var_name: S3_SECRET_ACCESS_KEY
 
 ### Required fields
 
-- year - Draft year (typically current or previous year)
-- name - Display name for the dashboard
-- sheet_name - Google Sheet name to update
-- database_file - DuckDB database filename (must end with .duckdb)
-- update_type - Data source: s3 or web
-- gspread_credentials_name - Env var name containing Google Sheets credentials JSON
+- `year` - Draft year (typically current or previous year)
+- `name` - Display name for the dashboard
+- `sheet_name` - Google Sheet name to update
+- `draft_id` - Unique identifier for the draft (used to create the database file as `{draft_id}.duckdb`)
+- `update_type` - Data source: `s3` or `web`
+- `gspread_credentials_name` - Env var name containing Google Sheets credentials JSON
 
 ### Optional / conditional fields
-#### Used when update_type: s3
+#### Used when `update_type: s3`
 
 - `bucket` - S3 bucket name
 - `s3_access_key_id_var_name` - Env var name for S3 access key ID
@@ -62,8 +62,8 @@ s3_secret_access_key_var_name: S3_SECRET_ACCESS_KEY
 ### Environment Variables
 Set environment variables referenced in your config:
 
-- `Google Sheets` - An env var named by gspread_credentials_name containing the service account credentials JSON with access to sheet_name.
-- `S3` (if update_type: s3) - Env vars named by s3_access_key_id_var_name and s3_secret_access_key_var_name with AWS credentials that can read from bucket.
+- `Google Sheets` - An env var named by `gspread_credentials_name` containing the service account credentials JSON with access to `sheet_name`.
+- `S3` (if `update_type: s3`) - Env vars named by `s3_access_key_id_var_name` and `s3_secret_access_key_var_name` with AWS credentials that can read from `bucket`.
 
 Example .env:
 
@@ -76,7 +76,7 @@ S3_SECRET_ACCESS_KEY='your-secret-access-key'
 ## Usage
 
 ### Local development
-Run the app locally for all configs in src/config/:
+Run the app locally for all configs in `src/config/`:
 
 ```bash
 uv run python app.py
@@ -89,13 +89,13 @@ Deploy the scheduled job to Modal:
 uv run modal deploy app.py
 ```
 
-By default, the job is scheduled to run daily at 09:00 UTC. All config files in src/config/ are automatically discovered and processed.
+By default, the job is scheduled to run daily at 09:00 UTC. All config files in `src/config/` are automatically discovered and processed.
 
 ## Compatibility with box-office-tracking
 
-When using update_type: s3, this project expects the published tables produced by box-office-tracking:
- - Each release of box-office-drafting targets a specific major version / S3 prefix from box-office-tracking.
- - See the release notes and README in box-office-tracking for the current published table locations and schema guarantees.
+When using `update_type: s3`, this project expects the published tables produced by `box-office-tracking`:
+ - Each release of `box-office-drafting` targets a specific major version / S3 prefix from `box-office-tracking`.
+ - See the release notes and README in `box-office-tracking` for the current published table locations and schema guarantees.
 
 ## Versioning
 This project uses semantic versioning (MAJOR.MINOR.PATCH). Breaking changes to the scoring rules, config format, or tracking-data contract will bump the major version.

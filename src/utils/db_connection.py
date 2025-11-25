@@ -20,8 +20,9 @@ load_dotenv()
 class DuckDBConnection:
     def __init__(self, config_dict: ConfigDict, need_write_access: bool = False) -> None:
         '''Initialize a DuckDB connection with S3 configuration.'''
+        draft_id = config_dict.get('draft_id', '')
         database_name = (
-            project_root / 'src' / 'duckdb_databases' / config_dict.get('database_file')
+            project_root / 'src' / 'duckdb_databases' / f'{draft_id}.duckdb'
         )
 
         self.connection = duckdb.connect(
@@ -79,7 +80,7 @@ def duckdb_connection(
     Only read access to S3 is required.
 
     Args:
-        config_dict: Configuration dictionary containing database_file and S3 credentials.
+        config_dict: Configuration dictionary containing draft_id and S3 credentials.
         need_write_access: Whether write access is needed (deprecated, not used)
 
     Yields:

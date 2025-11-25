@@ -20,7 +20,8 @@ from src.utils.constants import (
 
 def get_sqlmesh_config(config_path: Path | str) -> Config:
     config: ConfigDict = get_config_dict(config_path)
-    database_file = config.get('database_file')
+    draft_id = config.get('draft_id')
+    database_file = f'{draft_id}.duckdb'
 
     s3_access_key_id_var_name = config.get('s3_access_key_id_var_name')
     s3_secret_access_key_var_name = config.get('s3_secret_access_key_var_name')
