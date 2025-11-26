@@ -43,8 +43,19 @@ def update_dashboards():
         print(f'No config files found in {config_dir}')
         return
 
+    seen_draft_ids = {}
+
     for config_path in config_files:
         config_dict = get_config_dict(config_path)
+        draft_id = config_dict['draft_id']
+
+        if draft_id in seen_draft_ids:
+            raise ValueError(
+                f"draft_id '{draft_id}' is used in both {seen_draft_ids[draft_id].name} and {config_path.name}"
+            )
+
+        seen_draft_ids[draft_id] = config_path
+
         google_sheet_sync(config_dict=config_dict)
 
 

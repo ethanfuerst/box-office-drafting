@@ -13,7 +13,7 @@ class ConfigDict(TypedDict):
         year (int): The year of the box office draft (e.g., 2025).
         name (str): Display name for the dashboard (e.g., '2025 Fantasy Box Office Standings').
         sheet_name (str): Name of the Google Sheet to update.
-        database_file (str): Filename of the DuckDB database (e.g., 'friends_2025.duckdb').
+        draft_id (str): Unique identifier for the draft (e.g., 'friends_2025').
         update_type (str): Data source type, either 's3' to read from S3 parquet files
             or 'web' to scrape from boxofficemojo.com.
         gspread_credentials_name (str): Environment variable name containing Google Sheets
@@ -34,7 +34,7 @@ class ConfigDict(TypedDict):
     year: int
     name: str
     sheet_name: str
-    database_file: str
+    draft_id: str
     update_type: str
     gspread_credentials_name: str
     path: Path | str
@@ -89,7 +89,7 @@ def validate_config(config: ConfigDict) -> ConfigDict:
         'year': int,
         'name': str,
         'sheet_name': str,
-        'database_file': str,
+        'draft_id': str,
         'update_type': str,
         'gspread_credentials_name': str,
     }
@@ -108,10 +108,6 @@ def validate_config(config: ConfigDict) -> ConfigDict:
                 type_errors.append(
                     f'{field}: expected {expected_type.__name__}, got {actual_type}'
                 )
-
-    if 'database_file' in config and isinstance(config['database_file'], str):
-        if not config['database_file'].endswith('.duckdb'):
-            type_errors.append('database_file: must end with .duckdb')
 
     if 'year' in config and isinstance(config['year'], int):
         current_year = datetime.now(timezone.utc).year

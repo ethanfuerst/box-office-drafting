@@ -12,7 +12,7 @@ def table_to_df(
     columns: Optional[List[str]] = None,
 ) -> DataFrame:
     '''Load a SQL table into a pandas DataFrame.'''
-    catalog_name = config_dict.get('database_file', '').replace('.duckdb', '')
+    catalog_name = config_dict.get('draft_id')
 
     with duckdb_connection(config_dict) as duckdb_con:
         df = duckdb_con.df(f'select * from {catalog_name}.{table}')
