@@ -18,6 +18,13 @@ fi
 echo "Updating main from origin..."
 git pull --ff-only
 
+# Check that gh CLI is installed
+if ! command -v gh >/dev/null 2>&1; then
+  echo "Error: gh (GitHub CLI) is not installed."
+  echo "Install it with: brew install gh"
+  exit 1
+fi
+
 echo
 echo "Select version option:"
 echo "  1) bump patch  (x.y.z -> x.y.(z+1))"
@@ -98,17 +105,13 @@ git tag "v$VERSION"
 git push origin main
 git push origin "v$VERSION"
 
-# Optionally create GitHub Release using gh if available
-if command -v gh >/dev/null 2>&1; then
-  echo
-  read -rp "Create GitHub release v$VERSION with gh? [y/N]: " create_release
-  if [[ "$create_release" == "y" || "$create_release" == "Y" ]]; then
-    gh release create "v$VERSION" \
-      --title "v$VERSION" \
-      --notes "Release v$VERSION"
-  fi
-else
-  echo "gh (GitHub CLI) not found; tag v$VERSION was pushed but no GitHub Release was created."
+# Create GitHub Release using gh
+echo
+read -rp "Create GitHub release v$VERSION with gh? [y/N]: " create_release
+if [[ "$create_release" == "y" || "$create_release" == "Y" ]]; then
+  gh release create "v$VERSION" \
+    --title "v$VERSION" \
+    --notes "Release v$VERSION"
 fi
 
 echo "Done. Released v$VERSION."
