@@ -324,6 +324,16 @@ def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None
     logging.info('Dashboard updated and formatted')
 
 
+def add_comments_to_dashboard(gsheet_dashboard: GoogleSheetDashboard) -> None:
+    '''Add comments to the dashboard.'''
+    notes_dict = load_format_config(
+        project_root / 'src' / 'assets' / 'dashboard_notes.json'
+    )
+
+    worksheet = gsheet_dashboard.worksheet
+    worksheet.insert_notes(notes_dict)
+
+
 def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
     '''Log movies that are drafted but missing from the scoreboard.'''
     draft_df = table_to_df(
@@ -407,5 +417,6 @@ def load_dashboard_data(config_dict: ConfigDict) -> None:
     update_dashboard(gsheet_dashboard, config_dict)
     update_titles(gsheet_dashboard)
     apply_conditional_formatting(gsheet_dashboard)
+    add_comments_to_dashboard(gsheet_dashboard)
     log_missing_movies(gsheet_dashboard)
     log_min_revenue_info(gsheet_dashboard, config_dict)
