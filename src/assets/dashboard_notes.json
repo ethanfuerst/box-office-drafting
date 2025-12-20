@@ -1,5 +1,5 @@
 {
-    "U4": "A movie is considered a better pick if it was drafted before another movie was drafted and made more revenue (adjusted for multiplier).",
+    "U4": "A movie is considered a better pick if it was drafted after by a different drafter (or was not drafted at all) and made more revenue (adjusted for multiplier).",
     "W4": "The first date a movie was seen in the database.",
     "X4": "A movie is considered still in theaters if the first record is within the last week or the revenue has changed in the last week."
 }
