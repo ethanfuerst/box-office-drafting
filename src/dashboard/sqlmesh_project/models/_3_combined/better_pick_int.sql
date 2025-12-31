@@ -19,7 +19,8 @@ select
             , 1
         ) * better_pick.revenue
     ) - picks.scored_revenue as missed_revenue
-    , (picks.drafted_by != better_pick.drafted_by) or (better_pick.drafted_by is null) as better_pick_drafted_by_someone_else
+    , (picks.drafted_by != better_pick.drafted_by) and (better_pick.drafted_by is not null) as better_pick_drafted_by_someone_else
+    , better_pick.drafted_by is null as better_pick_drafted_by_no_one
 from combined.base_query_int as picks
 left join combined.base_query_int as better_pick
     on
