@@ -31,6 +31,9 @@ select
     ) as first_seen_date
     , case
         when
+            base_query_int.scored_revenue = 0
+            then 'No'
+        when
             base_query_int.still_in_theaters
             or datediff(
                 'day'

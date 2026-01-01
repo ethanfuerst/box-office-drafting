@@ -14,6 +14,13 @@ def get_gspread_client(credentials_name: str = None):
             'GSPREAD_CREDENTIALS_NAME must be set as environment variable or passed as parameter'
         )
 
+    credentials_json = os.getenv(credentials_name)
+    if credentials_json is None:
+        raise ValueError(
+            f'Environment variable "{credentials_name}" is not set. '
+            'Ensure the credentials are available as an environment variable.'
+        )
+
     credentials_dict = json.loads(os.getenv(credentials_name).replace('\n', '\\n'))
     return service_account_from_dict(credentials_dict)
 

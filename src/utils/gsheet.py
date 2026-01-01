@@ -171,6 +171,7 @@ def update_dashboard(
     dashboard_done_updating = (
         gsheet_dashboard.released_movies_df['Still In Theaters'].eq('No').all()
         and len(gsheet_dashboard.released_movies_df) > 0
+        and gsheet_dashboard.year < datetime.now(timezone.utc).year
     )
 
     log_string = f'Dashboard Last Updated\n{datetime.now(timezone.utc).strftime(DATETIME_FORMAT)} UTC'
@@ -360,7 +361,7 @@ def log_min_revenue_info(
 ) -> None:
     '''Log movies with revenue below the minimum threshold.'''
     with duckdb_connection(config_dict) as duckdb_con:
-        min_revenue_of_most_recent_data = duckdb_con.query(
+        result = duckdb_con.query(
             f'''
             with most_recent_data as (
                 select title, revenue
@@ -372,7 +373,13 @@ def log_min_revenue_info(
             select title, revenue
             from most_recent_data qualify row_number() over (order by revenue asc) = 1;
             '''
-        ).fetchnumpy()['revenue'][0]
+        ).fetchnumpy()['revenue']
+
+        if len(result) == 0:
+            logging.info('No revenue data found for this year.')
+            return
+
+        min_revenue_of_most_recent_data = result[0]
 
         logging.info(
             f'Minimum revenue of most recent data: {min_revenue_of_most_recent_data}'
