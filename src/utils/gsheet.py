@@ -365,7 +365,7 @@ def log_min_revenue_info(
             f'''
             with most_recent_data as (
                 select title, revenue
-                from raw.box_office_mojo_dump where release_year = {gsheet_dashboard.year}
+                from cleaned.box_office_mojo_dump where release_year = {gsheet_dashboard.year}
                 qualify rank() over (order by loaded_date desc) = 1
                 order by 2 desc
             )
@@ -388,17 +388,17 @@ def log_min_revenue_info(
         movies_under_min_revenue = (
             duckdb_con.query(
                 f'''
-                with raw_data as (
+                with cleaned_data as (
                     select title, revenue
-                    from raw.box_office_mojo_dump
+                    from cleaned.box_office_mojo_dump
                     where release_year = {gsheet_dashboard.year}
                     qualify row_number() over (partition by title order by loaded_date desc) = 1
                 )
 
-                select raw_data.title from raw_data
+                select cleaned_data.title from cleaned_data
                 inner join combined.base_query as base_query
-                    on raw_data.title = base_query.title
-                where raw_data.revenue <= {min_revenue_of_most_recent_data}
+                    on cleaned_data.title = base_query.title
+                where cleaned_data.revenue <= {min_revenue_of_most_recent_data}
                 '''
             )
             .fetchnumpy()['title']
