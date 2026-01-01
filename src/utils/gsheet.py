@@ -171,6 +171,7 @@ def update_dashboard(
     dashboard_done_updating = (
         gsheet_dashboard.released_movies_df['Still In Theaters'].eq('No').all()
         and len(gsheet_dashboard.released_movies_df) > 0
+        and gsheet_dashboard.year < datetime.now(timezone.utc).year
     )
 
     log_string = f'Dashboard Last Updated\n{datetime.now(timezone.utc).strftime(DATETIME_FORMAT)} UTC'
