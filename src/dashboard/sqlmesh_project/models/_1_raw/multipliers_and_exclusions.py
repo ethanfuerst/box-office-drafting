@@ -27,7 +27,7 @@ def execute(
     end: datetime,
     execution_time: datetime,
     **kwargs: t.Any,
-) -> pd.DataFrame:
+) -> t.Iterator[pd.DataFrame]:
     sheet_name = context.var('sheet_name')
     credentials_name = context.var('gspread_credentials_name')
 
@@ -39,7 +39,13 @@ def execute(
     )
 
     raw = worksheet.get_all_values()
+
+    # Handle empty worksheet
+    if len(raw) <= 1:
+        yield from ()
+        return
+
     df = DataFrame(data=raw[1:], columns=raw[0]).astype(str)
     df['multiplier'] = df['multiplier'].replace('', 0).astype(float)
 
-    return df
+    yield df

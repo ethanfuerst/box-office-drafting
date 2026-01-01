@@ -360,7 +360,7 @@ def log_min_revenue_info(
 ) -> None:
     '''Log movies with revenue below the minimum threshold.'''
     with duckdb_connection(config_dict) as duckdb_con:
-        min_revenue_of_most_recent_data = duckdb_con.query(
+        result = duckdb_con.query(
             f'''
             with most_recent_data as (
                 select title, revenue
@@ -372,7 +372,13 @@ def log_min_revenue_info(
             select title, revenue
             from most_recent_data qualify row_number() over (order by revenue asc) = 1;
             '''
-        ).fetchnumpy()['revenue'][0]
+        ).fetchnumpy()['revenue']
+
+        if len(result) == 0:
+            logging.info('No revenue data found for this year.')
+            return
+
+        min_revenue_of_most_recent_data = result[0]
 
         logging.info(
             f'Minimum revenue of most recent data: {min_revenue_of_most_recent_data}'
