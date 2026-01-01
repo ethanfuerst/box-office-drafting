@@ -45,7 +45,6 @@ def execute(
         from read_parquet('s3://{bucket}/published_tables/daily_ranks/v1/data.parquet')"""
 
         result_df = context.engine_adapter.fetchdf(s3_query)
-        print(result_df.head())
     else:
         with unverified_ssl_context():
             df = read_html(f'https://www.boxofficemojo.com/year/world/{year}')[0]
