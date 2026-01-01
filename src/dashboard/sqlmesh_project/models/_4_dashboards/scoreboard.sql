@@ -9,8 +9,7 @@ select
     , count(distinct title)::int as num_released
     , sum(
         case
-            when scored_revenue = 0 then 0
-            when better_pick_scored_revenue = 0 then 1
+            when scored_revenue > 0 and better_pick_scored_revenue = 0 then 1
             else 0
         end
     ) as correctly_drafted_pick_count
