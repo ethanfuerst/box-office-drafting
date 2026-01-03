@@ -29,7 +29,7 @@ def execute(
     **kwargs: t.Any,
 ) -> pd.DataFrame:
     update_type = context.var('update_type') or 's3'
-    year = int(context.var('year') or 2025)
+    year = int(context.var('year') or datetime.now(timezone.utc).year)
     bucket = context.var('bucket') or ''
 
     if update_type == 's3':
@@ -39,9 +39,9 @@ def execute(
             revenue,
             domestic_rev,
             foreign_rev,
-            cast(to_timestamp(loaded_date) as date) as loaded_date,
+            loaded_date,
             release_year,
-            cast(epoch_ms(published_timestamp_utc) as timestamp) as published_timestamp_utc
+            published_timestamp_utc
         from read_parquet('s3://{bucket}/published_tables/daily_ranks/v1/data.parquet')"""
 
         result_df = context.engine_adapter.fetchdf(s3_query)
