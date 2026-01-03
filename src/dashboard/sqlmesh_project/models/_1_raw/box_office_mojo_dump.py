@@ -29,7 +29,7 @@ def execute(
     **kwargs: t.Any,
 ) -> pd.DataFrame:
     update_type = context.var('update_type') or 's3'
-    year = int(context.var('year') or 2025)
+    year = int(context.var('year') or datetime.now(timezone.utc).year)
     bucket = context.var('bucket') or ''
 
     if update_type == 's3':
