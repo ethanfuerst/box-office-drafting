@@ -272,7 +272,7 @@ def update_dashboard(
     gsf.set_column_width(gsheet_dashboard.worksheet, 'X', 106)
 
     if dashboard_done_updating:
-        gsf.set_column_width(gsheet_dashboard.worksheet, 'C', 174)
+        gsf.set_column_width(gsheet_dashboard.worksheet, 'G', 200)
 
 
 def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
