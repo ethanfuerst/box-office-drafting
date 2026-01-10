@@ -23,7 +23,7 @@ load_dotenv()
 
 class GoogleSheetDashboard:
     def __init__(self, config_dict: ConfigDict) -> None:
-        '''Initialize a Google Sheet dashboard with data from DuckDB.'''
+        """Initialize a Google Sheet dashboard with data from DuckDB."""
         self.config = config_dict
         self.year = self.config['year']
         self.gspread_credentials_name = self.config['gspread_credentials_name']
@@ -65,6 +65,7 @@ class GoogleSheetDashboard:
             ],
         )
 
+        # Always load both dataframes
         self.worst_picks_df = table_to_df(
             config_dict,
             'dashboards.worst_picks',
@@ -75,6 +76,19 @@ class GoogleSheetDashboard:
                 'Overall Pick',
                 'Number of Better Picks',
                 'Missed Revenue',
+            ],
+        )
+
+        self.best_picks_df = table_to_df(
+            config_dict,
+            'dashboards.best_picks',
+            columns=[
+                'Rank',
+                'Title',
+                'Drafted By',
+                'Overall Pick',
+                'Positions Gained',
+                'Actual Revenue',
             ],
         )
 
@@ -95,30 +109,74 @@ class GoogleSheetDashboard:
             ),
         ]
 
-        self.add_worst_picks = (
-            len(self.released_movies_df) > len(self.scoreboard_df) + 3
+        # Calculate available space for picks tables
+        # Formula: released_movies_height - scoreboard_height - 2 (for blank rows/spacing)
+        available_height = len(self.released_movies_df) - len(self.scoreboard_df) - 2
+
+        self.add_picks_table = (
+            available_height > 0
             and len(self.worst_picks_df) > 1
         )
 
-        self.better_picks_row_num = (
-            5 + len(self.scoreboard_df) + 2
-        )  # 3 for top rows, len of scoreboard and 2 rows of column names
+        # First picks table starts at: 5 (title rows) + scoreboard_height + 2 (blank + title)
+        self.picks_row_num = 5 + len(self.scoreboard_df) + 2
 
-        if self.add_worst_picks:
-            self.worst_picks_df_height = (
-                len(self.released_movies_df) - len(self.scoreboard_df) - 3
+        # Track whether we're showing both tables
+        self.add_both_picks_tables = False
+        self.best_picks_row_num = None
+
+        # Always try to show both tables
+        # Calculate space needed for both tables
+        # Each table needs: 1 (title row) + 1 (header row) + data rows
+        # Plus: 2 (blank row separator between tables)
+        min_rows_per_table = 2  # title + header (minimum to show anything useful)
+        separator_rows = 2  # blank row between tables
+
+        # Check if we have enough space for both tables
+        total_required = min_rows_per_table * 2 + separator_rows
+
+        if available_height >= total_required and len(self.worst_picks_df) > 1 and len(self.best_picks_df) > 1:
+            # We have space for both tables
+            self.add_both_picks_tables = True
+            self.add_picks_table = True
+
+            # Split available height between the two tables
+            # Total consumption per table: 1 (title) + 1 (header) + N (data rows)
+            # Total space: available_height = worst_title + worst_header + worst_data + separator + best_title + best_header + best_data
+            # After subtracting fixed overhead: available_height - 2 (titles) - 2 (separator) = space for headers + data
+            # Since headers are 1 row each: available_height - 2 - 2 - 2 = available_height - 6 = space for data only
+            # Actually, the header is part of the table, so: available_height - 2 (titles) - 2 (separator) = space for both tables (header+data)
+
+            # Available space for both tables' content (header + data rows)
+            usable_height = available_height - 2 - separator_rows  # subtract title rows and separator
+
+            # Split evenly for data rows (each table gets header + data)
+            height_per_table = usable_height // 2
+
+            # Worst picks comes first
+            worst_picks_height = min(height_per_table, len(self.worst_picks_df))
+            self.worst_picks_df = self.worst_picks_df.head(worst_picks_height)
+
+            # Best picks comes second, after worst picks + separator
+            # best_picks_row_num = picks_row_num + 1 (title) + worst_picks_height + separator_rows
+            self.best_picks_row_num = self.picks_row_num + 1 + worst_picks_height + separator_rows
+
+            # Calculate remaining height for best picks
+            # Remaining space = usable_height - worst_picks_height
+            best_picks_height = min(
+                usable_height - worst_picks_height,
+                len(self.best_picks_df)
             )
+            self.best_picks_df = self.best_picks_df.head(best_picks_height)
 
-            self.worst_picks_df = self.worst_picks_df.head(self.worst_picks_df_height)
-
-            # replace the row number in the format config with the better picks row number
+            # Add worst picks table
             self.dashboard_elements.append(
                 (
                     self.worst_picks_df,
-                    f'B{self.better_picks_row_num}',
+                    f'B{self.picks_row_num}',
                     {
-                        key.replace('12', str(self.better_picks_row_num)).replace(
-                            '13', str(self.better_picks_row_num + 1)
+                        key.replace('12', str(self.picks_row_num)).replace(
+                            '13', str(self.picks_row_num + 1)
                         ): value
                         for key, value in load_format_config(
                             project_root / 'src' / 'assets' / 'worst_picks_format.json'
@@ -127,10 +185,50 @@ class GoogleSheetDashboard:
                 )
             )
 
+            # Add best picks table
+            self.dashboard_elements.append(
+                (
+                    self.best_picks_df,
+                    f'B{self.best_picks_row_num}',
+                    {
+                        key.replace('12', str(self.best_picks_row_num)).replace(
+                            '13', str(self.best_picks_row_num + 1)
+                        ): value
+                        for key, value in load_format_config(
+                            project_root / 'src' / 'assets' / 'worst_picks_format.json'
+                        ).items()
+                    },
+                )
+            )
+
+            logging.info(f"Showing both picks tables: worst_picks ({worst_picks_height} rows) and best_picks ({best_picks_height} rows)")
+        else:
+            # Not enough space for both, fall back to worst picks only
+            logging.info(f"Not enough space for both tables (available: {available_height}, required: {total_required}). Falling back to worst picks only.")
+            self.add_picks_table = available_height > 0 and len(self.worst_picks_df) > 1
+
+            if self.add_picks_table:
+                self.worst_picks_df = self.worst_picks_df.head(available_height)
+
+                self.dashboard_elements.append(
+                    (
+                        self.worst_picks_df,
+                        f'B{self.picks_row_num}',
+                        {
+                            key.replace('12', str(self.picks_row_num)).replace(
+                                '13', str(self.picks_row_num + 1)
+                            ): value
+                            for key, value in load_format_config(
+                                project_root / 'src' / 'assets' / 'worst_picks_format.json'
+                            ).items()
+                        },
+                    )
+                )
+
         self.setup_worksheet()
 
     def setup_worksheet(self) -> None:
-        '''Create and configure the Google Sheet worksheet.'''
+        """Create and configure the Google Sheet worksheet."""
         gspread_credentials_key = self.gspread_credentials_name
         gspread_credentials = os.getenv(gspread_credentials_key)
 
@@ -159,7 +257,7 @@ class GoogleSheetDashboard:
 def update_dashboard(
     gsheet_dashboard: GoogleSheetDashboard, config_dict: ConfigDict
 ) -> None:
-    '''Update the Google Sheet with dashboard data and metadata.'''
+    """Update the Google Sheet with dashboard data and metadata."""
     for element in gsheet_dashboard.dashboard_elements:
         df_to_sheet(
             df=element[0],
@@ -181,10 +279,10 @@ def update_dashboard(
 
     with duckdb_connection(config_dict) as duckdb_con:
         published_timestamp_of_most_recent_data = duckdb_con.query(
-            '''
+            """
                 select max(published_timestamp_utc) as published_timestamp_utc
                 from cleaned.box_office_mojo_dump
-            '''
+            """
         ).fetchnumpy()['published_timestamp_utc'][0]
 
     # Convert numpy.datetime64 to Python datetime
@@ -219,17 +317,42 @@ def update_dashboard(
         },
     )
 
-    if gsheet_dashboard.add_worst_picks:
-        gsheet_dashboard.worksheet.format(
-            f'B{gsheet_dashboard.better_picks_row_num}:G{gsheet_dashboard.better_picks_row_num}',
-            {
-                'horizontalAlignment': 'CENTER',
-                'textFormat': {
-                    'fontSize': 10,
-                    'bold': True,
+    if gsheet_dashboard.add_picks_table:
+        if gsheet_dashboard.add_both_picks_tables:
+            # Format worst picks header
+            gsheet_dashboard.worksheet.format(
+                f'B{gsheet_dashboard.picks_row_num}:G{gsheet_dashboard.picks_row_num}',
+                {
+                    'horizontalAlignment': 'CENTER',
+                    'textFormat': {
+                        'fontSize': 10,
+                        'bold': True,
+                    },
                 },
-            },
-        )
+            )
+            # Format best picks header
+            gsheet_dashboard.worksheet.format(
+                f'B{gsheet_dashboard.best_picks_row_num}:G{gsheet_dashboard.best_picks_row_num}',
+                {
+                    'horizontalAlignment': 'CENTER',
+                    'textFormat': {
+                        'fontSize': 10,
+                        'bold': True,
+                    },
+                },
+            )
+        else:
+            # Single table
+            gsheet_dashboard.worksheet.format(
+                f'B{gsheet_dashboard.picks_row_num}:G{gsheet_dashboard.picks_row_num}',
+                {
+                    'horizontalAlignment': 'CENTER',
+                    'textFormat': {
+                        'fontSize': 10,
+                        'bold': True,
+                    },
+                },
+            )
 
     gsheet_dashboard.worksheet.format(
         'I4:X4',
@@ -254,7 +377,7 @@ def update_dashboard(
     # for some reason the auto resize still cuts off some of the title
     title_columns = ['J', 'U']
 
-    if gsheet_dashboard.add_worst_picks:
+    if gsheet_dashboard.add_picks_table:
         title_columns.append('C')
 
     for column in title_columns:
@@ -276,7 +399,7 @@ def update_dashboard(
 
 
 def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
-    '''Update section titles in the Google Sheet.'''
+    """Update section titles in the Google Sheet."""
     gsheet_dashboard.worksheet.update(
         values=[[gsheet_dashboard.dashboard_name]], range_name='B2'
     )
@@ -292,22 +415,53 @@ def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
     )
     gsheet_dashboard.worksheet.merge_cells('I2:X2')
 
-    if gsheet_dashboard.add_worst_picks:
-        worst_picks_row_num = gsheet_dashboard.better_picks_row_num - 1
-        gsheet_dashboard.worksheet.update(
-            values=[['Worst Picks']], range_name=f'B{worst_picks_row_num}'
-        )
-        gsheet_dashboard.worksheet.format(
-            f'B{worst_picks_row_num}',
-            {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
-        )
-        gsheet_dashboard.worksheet.merge_cells(
-            f'B{worst_picks_row_num}:G{worst_picks_row_num}'
-        )
+    if gsheet_dashboard.add_picks_table:
+        if gsheet_dashboard.add_both_picks_tables:
+            # Add worst picks title
+            worst_picks_title_row_num = gsheet_dashboard.picks_row_num - 1
+            gsheet_dashboard.worksheet.update(
+                values=[['Worst Picks']],
+                range_name=f'B{worst_picks_title_row_num}',
+            )
+            gsheet_dashboard.worksheet.format(
+                f'B{worst_picks_title_row_num}',
+                {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
+            )
+            gsheet_dashboard.worksheet.merge_cells(
+                f'B{worst_picks_title_row_num}:G{worst_picks_title_row_num}'
+            )
+
+            # Add best picks title
+            best_picks_title_row_num = gsheet_dashboard.best_picks_row_num - 1
+            gsheet_dashboard.worksheet.update(
+                values=[['Best Picks']],
+                range_name=f'B{best_picks_title_row_num}',
+            )
+            gsheet_dashboard.worksheet.format(
+                f'B{best_picks_title_row_num}',
+                {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
+            )
+            gsheet_dashboard.worksheet.merge_cells(
+                f'B{best_picks_title_row_num}:G{best_picks_title_row_num}'
+            )
+        else:
+            # Single table (worst picks only)
+            picks_title_row_num = gsheet_dashboard.picks_row_num - 1
+            gsheet_dashboard.worksheet.update(
+                values=[['Worst Picks']],
+                range_name=f'B{picks_title_row_num}',
+            )
+            gsheet_dashboard.worksheet.format(
+                f'B{picks_title_row_num}',
+                {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
+            )
+            gsheet_dashboard.worksheet.merge_cells(
+                f'B{picks_title_row_num}:G{picks_title_row_num}'
+            )
 
 
 def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None:
-    '''Apply conditional formatting rules to the Google Sheet.'''
+    """Apply conditional formatting rules to the Google Sheet."""
     still_in_theater_rule = gsf.ConditionalFormatRule(
         ranges=[gsf.GridRange.from_a1_range('X5:X', gsheet_dashboard.worksheet)],
         booleanRule=gsf.BooleanRule(
@@ -326,7 +480,7 @@ def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None
 
 
 def add_comments_to_dashboard(gsheet_dashboard: GoogleSheetDashboard) -> None:
-    '''Add comments to the dashboard.'''
+    """Add comments to the dashboard."""
     notes_dict = load_format_config(
         project_root / 'src' / 'assets' / 'dashboard_notes.json'
     )
@@ -336,7 +490,7 @@ def add_comments_to_dashboard(gsheet_dashboard: GoogleSheetDashboard) -> None:
 
 
 def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
-    '''Log movies that are drafted but missing from the scoreboard.'''
+    """Log movies that are drafted but missing from the scoreboard."""
     draft_df = table_to_df(
         gsheet_dashboard.config,
         'cleaned.drafter',
@@ -359,10 +513,10 @@ def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:
 def log_min_revenue_info(
     gsheet_dashboard: GoogleSheetDashboard, config_dict: ConfigDict
 ) -> None:
-    '''Log movies with revenue below the minimum threshold.'''
+    """Log movies with revenue below the minimum threshold."""
     with duckdb_connection(config_dict) as duckdb_con:
         result = duckdb_con.query(
-            f'''
+            f"""
             with most_recent_data as (
                 select title, revenue
                 from cleaned.box_office_mojo_dump where release_year = {gsheet_dashboard.year}
@@ -372,7 +526,7 @@ def log_min_revenue_info(
 
             select title, revenue
             from most_recent_data qualify row_number() over (order by revenue asc) = 1;
-            '''
+            """
         ).fetchnumpy()['revenue']
 
         if len(result) == 0:
@@ -387,7 +541,7 @@ def log_min_revenue_info(
 
         movies_under_min_revenue = (
             duckdb_con.query(
-                f'''
+                f"""
                 with cleaned_data as (
                     select title, revenue
                     from cleaned.box_office_mojo_dump
@@ -399,7 +553,7 @@ def log_min_revenue_info(
                 inner join combined.base_query as base_query
                     on cleaned_data.title = base_query.title
                 where cleaned_data.revenue <= {min_revenue_of_most_recent_data}
-                '''
+                """
             )
             .fetchnumpy()['title']
             .tolist()
@@ -418,7 +572,7 @@ def log_min_revenue_info(
 
 
 def load_dashboard_data(config_dict: ConfigDict) -> None:
-    '''Load configuration and update the Google Sheet dashboard.'''
+    """Load configuration and update the Google Sheet dashboard."""
     gsheet_dashboard = GoogleSheetDashboard(config_dict)
 
     update_dashboard(gsheet_dashboard, config_dict)
