@@ -37,6 +37,7 @@ with drafted_movies as (
     inner join all_released_movies
         on drafted_movies.title = all_released_movies.title
     where (drafted_movies.draft_order_rank - all_released_movies.revenue_order_rank) > 0
+        and drafted_movies.scored_revenue > 0
 )
 
 select
