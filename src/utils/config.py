@@ -125,9 +125,13 @@ def validate_config(config: ConfigDict) -> ConfigDict:
         if 'bucket' not in config:
             type_errors.append("bucket: required when update_type is 's3'")
         if 's3_access_key_id_var_name' not in config:
-            type_errors.append("s3_access_key_id_var_name: required when update_type is 's3'")
+            type_errors.append(
+                "s3_access_key_id_var_name: required when update_type is 's3'"
+            )
         if 's3_secret_access_key_var_name' not in config:
-            type_errors.append("s3_secret_access_key_var_name: required when update_type is 's3'")
+            type_errors.append(
+                "s3_secret_access_key_var_name: required when update_type is 's3'"
+            )
 
     errors = []
     if missing_fields:
@@ -139,7 +143,6 @@ def validate_config(config: ConfigDict) -> ConfigDict:
         raise ValueError('Configuration validation failed:\n' + '\n'.join(errors))
 
     return config
-
 
 
 def get_config_dict(config_path: Path | str) -> ConfigDict:

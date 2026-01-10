@@ -18,12 +18,12 @@ load_dotenv()
 
 
 class DuckDBConnection:
-    def __init__(self, config_dict: ConfigDict, need_write_access: bool = False) -> None:
+    def __init__(
+        self, config_dict: ConfigDict, need_write_access: bool = False
+    ) -> None:
         '''Initialize a DuckDB connection with S3 configuration.'''
         draft_id = config_dict.get('draft_id', '')
-        database_name = (
-            project_root / 'src' / 'duckdb_databases' / f'{draft_id}.duckdb'
-        )
+        database_name = project_root / 'src' / 'duckdb_databases' / f'{draft_id}.duckdb'
 
         self.connection = duckdb.connect(
             database=str(database_name),
