@@ -65,36 +65,36 @@ class GoogleSheetDashboard:
             ],
         )
 
-        picks_table_type = self.config.get('picks_table_type', 'worst')
+        # Always load both dataframes
+        self.worst_picks_df = table_to_df(
+            config_dict,
+            'dashboards.worst_picks',
+            columns=[
+                'Rank',
+                'Title',
+                'Drafted By',
+                'Overall Pick',
+                'Number of Better Picks',
+                'Missed Revenue',
+            ],
+        )
 
-        if picks_table_type == 'best':
-            self.picks_df = table_to_df(
-                config_dict,
-                'dashboards.best_picks',
-                columns=[
-                    'Rank',
-                    'Title',
-                    'Drafted By',
-                    'Overall Pick',
-                    'Positions Gained',
-                    'Actual Revenue',
-                ],
-            )
-            self.picks_table_title = 'Best Picks'
-        else:
-            self.picks_df = table_to_df(
-                config_dict,
-                'dashboards.worst_picks',
-                columns=[
-                    'Rank',
-                    'Title',
-                    'Drafted By',
-                    'Overall Pick',
-                    'Number of Better Picks',
-                    'Missed Revenue',
-                ],
-            )
-            self.picks_table_title = 'Worst Picks'
+        self.best_picks_df = table_to_df(
+            config_dict,
+            'dashboards.best_picks',
+            columns=[
+                'Rank',
+                'Title',
+                'Drafted By',
+                'Overall Pick',
+                'Positions Gained',
+                'Actual Revenue',
+            ],
+        )
+
+        # Set primary picks_df to worst_picks for fallback compatibility
+        self.picks_df = self.worst_picks_df
+        self.picks_table_title = 'Worst Picks'
 
         self.dashboard_elements = [
             (
@@ -113,23 +113,64 @@ class GoogleSheetDashboard:
             ),
         ]
 
+        # Calculate available space for picks tables
+        # Formula: released_movies_height - scoreboard_height - 3 (for blank rows/spacing)
+        available_height = len(self.released_movies_df) - len(self.scoreboard_df) - 3
+
         self.add_picks_table = (
-            len(self.released_movies_df) > len(self.scoreboard_df) + 3
+            available_height > 0
             and len(self.picks_df) > 1
         )
 
+        # First picks table starts at: 5 (title rows) + scoreboard_height + 2 (blank + title)
         self.picks_row_num = 5 + len(self.scoreboard_df) + 2
 
-        if self.add_picks_table:
-            self.picks_df_height = (
-                len(self.released_movies_df) - len(self.scoreboard_df) - 3
+        # Track whether we're showing both tables
+        self.add_both_picks_tables = False
+        self.best_picks_row_num = None
+
+        # Always try to show both tables
+        # Calculate space needed for both tables
+        # Each table needs: 1 (title row) + 1 (header row) + data rows
+        # Plus: 2 (blank row separator between tables)
+        min_rows_per_table = 2  # title + header (minimum to show anything useful)
+        separator_rows = 2  # blank row between tables
+
+        # Check if we have enough space for both tables
+        total_required = min_rows_per_table * 2 + separator_rows
+
+        if available_height >= total_required and len(self.worst_picks_df) > 1 and len(self.best_picks_df) > 1:
+            # We have space for both tables
+            self.add_both_picks_tables = True
+            self.add_picks_table = True
+
+            # Split available height between the two tables
+            # Each table gets: 1 (title) + 1 (header) + data_rows
+            # Total available after accounting for separator: available_height - separator_rows
+            usable_height = available_height - separator_rows
+
+            # Split evenly, each table gets title + header + data
+            height_per_table = usable_height // 2
+
+            # Worst picks comes first
+            worst_picks_height = min(height_per_table, len(self.worst_picks_df))
+            self.worst_picks_df = self.worst_picks_df.head(worst_picks_height)
+
+            # Best picks comes second, after worst picks + separator
+            # best_picks_row_num = picks_row_num + 1 (title) + worst_picks_height + separator_rows
+            self.best_picks_row_num = self.picks_row_num + 1 + worst_picks_height + separator_rows
+
+            # Calculate remaining height for best picks
+            best_picks_height = min(
+                available_height - (1 + worst_picks_height + separator_rows + 1),
+                len(self.best_picks_df)
             )
+            self.best_picks_df = self.best_picks_df.head(best_picks_height)
 
-            self.picks_df = self.picks_df.head(self.picks_df_height)
-
+            # Add worst picks table
             self.dashboard_elements.append(
                 (
-                    self.picks_df,
+                    self.worst_picks_df,
                     f'B{self.picks_row_num}',
                     {
                         key.replace('12', str(self.picks_row_num)).replace(
@@ -141,6 +182,47 @@ class GoogleSheetDashboard:
                     },
                 )
             )
+
+            # Add best picks table
+            self.dashboard_elements.append(
+                (
+                    self.best_picks_df,
+                    f'B{self.best_picks_row_num}',
+                    {
+                        key.replace('12', str(self.best_picks_row_num)).replace(
+                            '13', str(self.best_picks_row_num + 1)
+                        ): value
+                        for key, value in load_format_config(
+                            project_root / 'src' / 'assets' / 'worst_picks_format.json'
+                        ).items()
+                    },
+                )
+            )
+
+            logging.info(f"Showing both picks tables: worst_picks ({worst_picks_height} rows) and best_picks ({best_picks_height} rows)")
+        else:
+            # Not enough space for both, fall back to worst picks only
+            logging.info(f"Not enough space for both tables (available: {available_height}, required: {total_required}). Falling back to worst picks only.")
+            self.add_picks_table = available_height > 0 and len(self.worst_picks_df) > 1
+
+            if self.add_picks_table:
+                self.worst_picks_df = self.worst_picks_df.head(available_height)
+                self.picks_df = self.worst_picks_df
+
+                self.dashboard_elements.append(
+                    (
+                        self.worst_picks_df,
+                        f'B{self.picks_row_num}',
+                        {
+                            key.replace('12', str(self.picks_row_num)).replace(
+                                '13', str(self.picks_row_num + 1)
+                            ): value
+                            for key, value in load_format_config(
+                                project_root / 'src' / 'assets' / 'worst_picks_format.json'
+                            ).items()
+                        },
+                    )
+                )
 
         self.setup_worksheet()
 
@@ -235,16 +317,41 @@ def update_dashboard(
     )
 
     if gsheet_dashboard.add_picks_table:
-        gsheet_dashboard.worksheet.format(
-            f'B{gsheet_dashboard.picks_row_num}:G{gsheet_dashboard.picks_row_num}',
-            {
-                'horizontalAlignment': 'CENTER',
-                'textFormat': {
-                    'fontSize': 10,
-                    'bold': True,
+        if gsheet_dashboard.add_both_picks_tables:
+            # Format worst picks header
+            gsheet_dashboard.worksheet.format(
+                f'B{gsheet_dashboard.picks_row_num}:G{gsheet_dashboard.picks_row_num}',
+                {
+                    'horizontalAlignment': 'CENTER',
+                    'textFormat': {
+                        'fontSize': 10,
+                        'bold': True,
+                    },
                 },
-            },
-        )
+            )
+            # Format best picks header
+            gsheet_dashboard.worksheet.format(
+                f'B{gsheet_dashboard.best_picks_row_num}:G{gsheet_dashboard.best_picks_row_num}',
+                {
+                    'horizontalAlignment': 'CENTER',
+                    'textFormat': {
+                        'fontSize': 10,
+                        'bold': True,
+                    },
+                },
+            )
+        else:
+            # Single table
+            gsheet_dashboard.worksheet.format(
+                f'B{gsheet_dashboard.picks_row_num}:G{gsheet_dashboard.picks_row_num}',
+                {
+                    'horizontalAlignment': 'CENTER',
+                    'textFormat': {
+                        'fontSize': 10,
+                        'bold': True,
+                    },
+                },
+            )
 
     gsheet_dashboard.worksheet.format(
         'I4:X4',
@@ -308,18 +415,48 @@ def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
     gsheet_dashboard.worksheet.merge_cells('I2:X2')
 
     if gsheet_dashboard.add_picks_table:
-        picks_title_row_num = gsheet_dashboard.picks_row_num - 1
-        gsheet_dashboard.worksheet.update(
-            values=[[gsheet_dashboard.picks_table_title]],
-            range_name=f'B{picks_title_row_num}',
-        )
-        gsheet_dashboard.worksheet.format(
-            f'B{picks_title_row_num}',
-            {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
-        )
-        gsheet_dashboard.worksheet.merge_cells(
-            f'B{picks_title_row_num}:G{picks_title_row_num}'
-        )
+        if gsheet_dashboard.add_both_picks_tables:
+            # Add worst picks title
+            worst_picks_title_row_num = gsheet_dashboard.picks_row_num - 1
+            gsheet_dashboard.worksheet.update(
+                values=[['Worst Picks']],
+                range_name=f'B{worst_picks_title_row_num}',
+            )
+            gsheet_dashboard.worksheet.format(
+                f'B{worst_picks_title_row_num}',
+                {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
+            )
+            gsheet_dashboard.worksheet.merge_cells(
+                f'B{worst_picks_title_row_num}:G{worst_picks_title_row_num}'
+            )
+
+            # Add best picks title
+            best_picks_title_row_num = gsheet_dashboard.best_picks_row_num - 1
+            gsheet_dashboard.worksheet.update(
+                values=[['Best Picks']],
+                range_name=f'B{best_picks_title_row_num}',
+            )
+            gsheet_dashboard.worksheet.format(
+                f'B{best_picks_title_row_num}',
+                {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
+            )
+            gsheet_dashboard.worksheet.merge_cells(
+                f'B{best_picks_title_row_num}:G{best_picks_title_row_num}'
+            )
+        else:
+            # Single table
+            picks_title_row_num = gsheet_dashboard.picks_row_num - 1
+            gsheet_dashboard.worksheet.update(
+                values=[[gsheet_dashboard.picks_table_title]],
+                range_name=f'B{picks_title_row_num}',
+            )
+            gsheet_dashboard.worksheet.format(
+                f'B{picks_title_row_num}',
+                {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
+            )
+            gsheet_dashboard.worksheet.merge_cells(
+                f'B{picks_title_row_num}:G{picks_title_row_num}'
+            )
 
 
 def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None:

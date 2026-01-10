@@ -28,9 +28,6 @@ class ConfigDict(TypedDict):
 
         s3_secret_access_key_var_name (str): Environment variable name for S3 secret
             access key. Required if update_type is 's3'.
-
-        picks_table_type (str): Type of picks table to display on dashboard, either 'best'
-            or 'worst'. Defaults to 'worst' if not specified.
     """
 
     # Required fields
@@ -46,7 +43,6 @@ class ConfigDict(TypedDict):
     s3_access_key_id_var_name: NotRequired[str]
     s3_secret_access_key_var_name: NotRequired[str]
     bucket: NotRequired[str]
-    picks_table_type: NotRequired[str]
 
 
 def read_config(config_path: Path | str) -> dict:
