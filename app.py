@@ -38,7 +38,9 @@ def update_dashboards():
     '''Discover and sync all valid YAML config files in src/config/.'''
     config_dir = project_root / 'src' / 'config'
     config_files = sorted(config_dir.glob('*.yml'))
-    print(f'Config files found: {", ".join([config_file.name for config_file in config_files])}')
+    print(
+        f'Config files found: {", ".join([config_file.name for config_file in config_files])}'
+    )
 
     if not config_files:
         print(f'No config files found in {config_dir}')
