@@ -244,36 +244,3 @@ class TestPicksTableLayout:
             assert (
                 abs(result['worst_picks_height'] - result['best_picks_height']) <= 1
             ), 'Tables should have roughly equal heights'
-
-
-if __name__ == '__main__':
-    # Run all test methods
-    test_class = TestPicksTableLayout()
-    tests = [
-        ('test_both_tables_with_plenty_of_space', test_class.test_both_tables_with_plenty_of_space),
-        ('test_both_tables_with_minimal_space', test_class.test_both_tables_with_minimal_space),
-        ('test_both_tables_with_odd_space', test_class.test_both_tables_with_odd_space),
-        ('test_fallback_to_worst_picks_only', test_class.test_fallback_to_worst_picks_only),
-        ('test_limited_worst_picks_data', test_class.test_limited_worst_picks_data),
-        ('test_limited_best_picks_data', test_class.test_limited_best_picks_data),
-        ('test_no_data_for_best_picks', test_class.test_no_data_for_best_picks),
-        ('test_ethan_and_noah_2025_case', test_class.test_ethan_and_noah_2025_case),
-    ]
-
-    passed = 0
-    failed = 0
-
-    for test_name, test_func in tests:
-        try:
-            test_func()
-            print(f'✓ {test_name}')
-            passed += 1
-        except AssertionError as e:
-            print(f'✗ {test_name}: {e}')
-            failed += 1
-        except Exception as e:
-            print(f'✗ {test_name}: Unexpected error: {e}')
-            failed += 1
-
-    print(f'\n{passed} passed, {failed} failed')
-    exit(0 if failed == 0 else 1)
