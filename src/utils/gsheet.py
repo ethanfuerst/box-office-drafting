@@ -114,8 +114,8 @@ class GoogleSheetDashboard:
         ]
 
         # Calculate available space for picks tables
-        # Formula: released_movies_height - scoreboard_height - 3 (for blank rows/spacing)
-        available_height = len(self.released_movies_df) - len(self.scoreboard_df) - 3
+        # Formula: released_movies_height - scoreboard_height - 2 (for blank rows/spacing)
+        available_height = len(self.released_movies_df) - len(self.scoreboard_df) - 2
 
         self.add_picks_table = (
             available_height > 0
@@ -145,11 +145,16 @@ class GoogleSheetDashboard:
             self.add_picks_table = True
 
             # Split available height between the two tables
-            # Each table gets: 1 (title) + 1 (header) + data_rows
-            # Total available after accounting for separator: available_height - separator_rows
-            usable_height = available_height - separator_rows
+            # Total consumption per table: 1 (title) + 1 (header) + N (data rows)
+            # Total space: available_height = worst_title + worst_header + worst_data + separator + best_title + best_header + best_data
+            # After subtracting fixed overhead: available_height - 2 (titles) - 2 (separator) = space for headers + data
+            # Since headers are 1 row each: available_height - 2 - 2 - 2 = available_height - 6 = space for data only
+            # Actually, the header is part of the table, so: available_height - 2 (titles) - 2 (separator) = space for both tables (header+data)
 
-            # Split evenly, each table gets title + header + data
+            # Available space for both tables' content (header + data rows)
+            usable_height = available_height - 2 - separator_rows  # subtract title rows and separator
+
+            # Split evenly for data rows (each table gets header + data)
             height_per_table = usable_height // 2
 
             # Worst picks comes first
@@ -161,8 +166,9 @@ class GoogleSheetDashboard:
             self.best_picks_row_num = self.picks_row_num + 1 + worst_picks_height + separator_rows
 
             # Calculate remaining height for best picks
+            # Remaining space = usable_height - worst_picks_height
             best_picks_height = min(
-                available_height - (1 + worst_picks_height + separator_rows + 1),
+                usable_height - worst_picks_height,
                 len(self.best_picks_df)
             )
             self.best_picks_df = self.best_picks_df.head(best_picks_height)
