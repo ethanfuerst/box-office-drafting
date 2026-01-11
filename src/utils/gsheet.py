@@ -92,10 +92,6 @@ class GoogleSheetDashboard:
             ],
         )
 
-        # Set primary picks_df to worst_picks for fallback compatibility
-        self.picks_df = self.worst_picks_df
-        self.picks_table_title = 'Worst Picks'
-
         self.dashboard_elements = [
             (
                 self.scoreboard_df,
@@ -119,7 +115,7 @@ class GoogleSheetDashboard:
 
         self.add_picks_table = (
             available_height > 0
-            and len(self.picks_df) > 1
+            and len(self.worst_picks_df) > 1
         )
 
         # First picks table starts at: 5 (title rows) + scoreboard_height + 2 (blank + title)
@@ -213,7 +209,6 @@ class GoogleSheetDashboard:
 
             if self.add_picks_table:
                 self.worst_picks_df = self.worst_picks_df.head(available_height)
-                self.picks_df = self.worst_picks_df
 
                 self.dashboard_elements.append(
                     (
