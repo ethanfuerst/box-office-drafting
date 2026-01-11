@@ -6,7 +6,7 @@ import yaml
 
 
 class ConfigDict(TypedDict):
-    '''
+    """
     Configuration dictionary for box office drafting dashboard.
 
     Required Fields:
@@ -28,7 +28,7 @@ class ConfigDict(TypedDict):
 
         s3_secret_access_key_var_name (str): Environment variable name for S3 secret
             access key. Required if update_type is 's3'.
-    '''
+    """
 
     # Required fields
     year: int
@@ -46,7 +46,7 @@ class ConfigDict(TypedDict):
 
 
 def read_config(config_path: Path | str) -> dict:
-    '''Load and parse a YAML configuration file.
+    """Load and parse a YAML configuration file.
 
     Args:
         config_path: Path to the YAML configuration file.
@@ -58,7 +58,7 @@ def read_config(config_path: Path | str) -> dict:
         FileNotFoundError: If the config file doesn't exist.
         ValueError: If the configuration file is empty or invalid.
         yaml.YAMLError: If YAML parsing fails.
-    '''
+    """
     config_path_obj = Path(config_path)
     with config_path_obj.open('r') as yaml_in:
         yaml_object = yaml.safe_load(yaml_in)
@@ -70,7 +70,7 @@ def read_config(config_path: Path | str) -> dict:
 
 
 def validate_config(config: ConfigDict) -> ConfigDict:
-    '''
+    """
     Validate configuration dictionary and return typed ConfigDict.
 
     Checks that all required fields are present and have correct types.
@@ -84,7 +84,7 @@ def validate_config(config: ConfigDict) -> ConfigDict:
 
     Raises:
         ValueError: If required fields are missing or have invalid types.
-    '''
+    """
     required_fields = {
         'year': int,
         'name': str,
@@ -146,7 +146,7 @@ def validate_config(config: ConfigDict) -> ConfigDict:
 
 
 def get_config_dict(config_path: Path | str) -> ConfigDict:
-    '''
+    """
     Load, parse, and validate a YAML configuration file.
 
     Args:
@@ -159,7 +159,7 @@ def get_config_dict(config_path: Path | str) -> ConfigDict:
         FileNotFoundError: If the config file doesn't exist.
         ValueError: If configuration validation fails.
         yaml.YAMLError: If YAML parsing fails.
-    '''
+    """
     config_path_obj = Path(config_path)
     with config_path_obj.open('r') as yaml_in:
         yaml_object = yaml.safe_load(yaml_in)
