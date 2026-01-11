@@ -19,3 +19,6 @@ src/duckdb_databases/*.duckdb.wal
 
 # SQLMesh project
 src/dashboard/sqlmesh_project/.cache/
+htmlcov
+.coverage
+.pytest_cache
