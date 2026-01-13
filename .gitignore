@@ -5,6 +5,7 @@ build/
 dist/
 wheels/
 *.egg-info
+.coverage
 
 # Virtual environments
 .venv
@@ -19,3 +20,6 @@ src/duckdb_databases/*.duckdb.wal
 
 # SQLMesh project
 src/dashboard/sqlmesh_project/.cache/
+htmlcov
+.coverage
+.pytest_cache

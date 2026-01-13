@@ -29,6 +29,8 @@ left join combined.base_query_int as better_pick
             (picks.overall_pick < better_pick.overall_pick)
             or (better_pick.overall_pick is null)
         )
+        and better_pick.drafted_by is not null
 left join cleaned.round_multiplier_overrides as round_multiplier_overrides
     on picks.round = round_multiplier_overrides.round
-where (missed_revenue > 0 or missed_revenue is null)
+where picks.drafted_by is not null
+    and (missed_revenue > 0 or missed_revenue is null)
