@@ -10,12 +10,7 @@ from sqlmesh.core.config import (
 
 from src import project_root
 from src.utils.config import ConfigDict, get_config_dict
-from src.utils.constants import (
-    DUCKDB_EXTENSION_HTTPFS,
-    S3_ENDPOINT,
-    S3_REGION,
-    S3_SECRET_TYPE,
-)
+from src.utils.constants import S3_ENDPOINT, S3_REGION
 
 
 def get_sqlmesh_config(config_path: Path | str) -> Config:
@@ -33,7 +28,7 @@ def get_sqlmesh_config(config_path: Path | str) -> Config:
     if key_id and secret:
         secrets = [
             {
-                'type': S3_SECRET_TYPE,
+                'type': 's3',
                 'region': S3_REGION,
                 'endpoint': S3_ENDPOINT,
                 'key_id': key_id,
@@ -50,7 +45,7 @@ def get_sqlmesh_config(config_path: Path | str) -> Config:
                         project_root / 'src' / 'duckdb_databases' / database_file
                     ),
                     extensions=[
-                        {'name': DUCKDB_EXTENSION_HTTPFS},
+                        {'name': 'httpfs'},
                     ],
                     secrets=secrets,
                 )

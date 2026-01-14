@@ -10,7 +10,7 @@ from gspread import service_account_from_dict
 from src import project_root
 from src.utils.config import ConfigDict
 from src.utils.constants import DATETIME_FORMAT
-from src.utils.db_connection import duckdb_connection
+from src.utils.db_connection import get_duckdb
 from src.utils.format import load_format_config
 from src.utils.gspread_format import df_to_sheet
 from src.utils.logging_config import setup_logging
@@ -321,8 +321,8 @@ def update_dashboard(
     if dashboard_done_updating:
         log_string += '\nDashboard is done updating\nand can be removed from the etl'
 
-    with duckdb_connection(config_dict) as duckdb_con:
-        published_timestamp_of_most_recent_data = duckdb_con.query(
+    with get_duckdb(config_dict) as db:
+        published_timestamp_of_most_recent_data = db.connection.query(
             """
                 select max(published_timestamp_utc) as published_timestamp_utc
                 from cleaned.box_office_mojo_dump
@@ -558,8 +558,8 @@ def log_min_revenue_info(
     gsheet_dashboard: GoogleSheetDashboard, config_dict: ConfigDict
 ) -> None:
     """Log movies with revenue below the minimum threshold."""
-    with duckdb_connection(config_dict) as duckdb_con:
-        result = duckdb_con.query(
+    with get_duckdb(config_dict) as db:
+        result = db.connection.query(
             f"""
             with most_recent_data as (
                 select title, revenue
@@ -584,7 +584,7 @@ def log_min_revenue_info(
         )
 
         movies_under_min_revenue = (
-            duckdb_con.query(
+            db.connection.query(
                 f"""
                 with cleaned_data as (
                     select title, revenue

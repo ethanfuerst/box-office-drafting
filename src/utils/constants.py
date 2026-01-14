@@ -1,10 +1,7 @@
+import os
+
 # S3 Configuration
-S3_REGION = 'nyc3'
-S3_ENDPOINT = 'nyc3.digitaloceanspaces.com'
-S3_SECRET_TYPE = 'S3'
+S3_REGION = os.getenv('S3_REGION')
+S3_ENDPOINT = os.getenv('S3_ENDPOINT')
 
-# DuckDB Configuration
-DUCKDB_EXTENSION_HTTPFS = 'httpfs'
-
-# Date/Time Formatting
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
