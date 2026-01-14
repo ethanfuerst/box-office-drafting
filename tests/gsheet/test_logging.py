@@ -51,16 +51,16 @@ def test_log_min_revenue_info_logs_minimum_revenue(caplog):
     mock_gsheet_dashboard.year = 2025
     config = make_config_dict(update_type='s3')
 
-    mock_conn = MagicMock()
+    mock_db = MagicMock()
     mock_result1 = MagicMock()
     mock_result1.fetchnumpy.return_value = {'revenue': np.array([1000000])}
     mock_result2 = MagicMock()
     mock_result2.fetchnumpy.return_value = {'title': np.array(['Low Revenue Movie'])}
-    mock_conn.query.side_effect = [mock_result1, mock_result2]
+    mock_db.connection.query.side_effect = [mock_result1, mock_result2]
 
-    with patch('src.utils.gsheet.duckdb_connection') as mock_ctx:
-        mock_ctx.return_value.__enter__.return_value = mock_conn
-        mock_ctx.return_value.__exit__.return_value = None
+    with patch('src.utils.gsheet.get_duckdb') as mock_get_duckdb:
+        mock_get_duckdb.return_value.__enter__.return_value = mock_db
+        mock_get_duckdb.return_value.__exit__.return_value = None
 
         with caplog.at_level(logging.INFO):
             from src.utils.gsheet import log_min_revenue_info
@@ -76,14 +76,14 @@ def test_log_min_revenue_info_handles_no_revenue_data(caplog):
     mock_gsheet_dashboard.year = 2025
     config = make_config_dict(update_type='s3')
 
-    mock_conn = MagicMock()
+    mock_db = MagicMock()
     mock_result = MagicMock()
     mock_result.fetchnumpy.return_value = {'revenue': np.array([])}
-    mock_conn.query.return_value = mock_result
+    mock_db.connection.query.return_value = mock_result
 
-    with patch('src.utils.gsheet.duckdb_connection') as mock_ctx:
-        mock_ctx.return_value.__enter__.return_value = mock_conn
-        mock_ctx.return_value.__exit__.return_value = None
+    with patch('src.utils.gsheet.get_duckdb') as mock_get_duckdb:
+        mock_get_duckdb.return_value.__enter__.return_value = mock_db
+        mock_get_duckdb.return_value.__exit__.return_value = None
 
         with caplog.at_level(logging.INFO):
             from src.utils.gsheet import log_min_revenue_info

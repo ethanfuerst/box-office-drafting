@@ -1,97 +1,51 @@
 import os
-from contextlib import contextmanager
-from typing import Any, Iterator
 
-import duckdb
 from dotenv import load_dotenv
+from eftoolkit.sql import DuckDB
 
 from src import project_root
 from src.utils.config import ConfigDict
-from src.utils.constants import (
-    DUCKDB_EXTENSION_HTTPFS,
-    S3_ENDPOINT,
-    S3_REGION,
-    S3_SECRET_TYPE,
-)
+from src.utils.constants import S3_ENDPOINT, S3_REGION
 
 load_dotenv()
 
 
-class DuckDBConnection:
-    def __init__(
-        self, config_dict: ConfigDict, need_write_access: bool = False
-    ) -> None:
-        '''Initialize a DuckDB connection with S3 configuration.'''
-        draft_id = config_dict.get('draft_id', '')
-        database_name = project_root / 'src' / 'duckdb_databases' / f'{draft_id}.duckdb'
+def get_duckdb(config_dict: ConfigDict) -> DuckDB:
+    '''Create a configured DuckDB instance from a config dictionary.
 
-        self.connection = duckdb.connect(
-            database=str(database_name),
-            read_only=False,
-        )
-
-        self.need_write_access = need_write_access
-        self._configure_connection(config_dict)
-
-    def _configure_connection(self, config_dict: ConfigDict) -> None:
-        '''Configure S3 credentials for the DuckDB connection. Only read access is required.'''
-        s3_access_key_id_var_name = config_dict.get('s3_access_key_id_var_name')
-        s3_secret_access_key_var_name = config_dict.get('s3_secret_access_key_var_name')
-
-        self.connection.execute(
-            f'''
-            install {DUCKDB_EXTENSION_HTTPFS};
-            load {DUCKDB_EXTENSION_HTTPFS};
-            CREATE OR REPLACE SECRET read_secret (
-                TYPE {S3_SECRET_TYPE},
-                KEY_ID '{os.getenv(s3_access_key_id_var_name)}',
-                SECRET '{os.getenv(s3_secret_access_key_var_name)}',
-                REGION '{S3_REGION}',
-                ENDPOINT '{S3_ENDPOINT}'
-            );
-            '''
-        )
-
-    def query(self, query: str) -> Any:
-        '''Execute a SQL query and return results.'''
-        return self.connection.query(query)
-
-    def execute(self, query: str, *args: Any, **kwargs: Any) -> None:
-        '''Execute a SQL query without returning results.'''
-        self.connection.execute(query, *args, **kwargs)
-
-    def close(self) -> None:
-        '''Close the DuckDB connection.'''
-        self.connection.close()
-
-    def df(self, query: str) -> Any:
-        '''Execute a SQL query and return results as a pandas DataFrame.'''
-        return self.connection.query(query).df()
-
-
-@contextmanager
-def duckdb_connection(
-    config_dict: ConfigDict, need_write_access: bool = False
-) -> Iterator[DuckDBConnection]:
-    '''
-    Context manager for DuckDB connections.
-
-    Ensures connections are properly closed even if an exception occurs.
-    Only read access to S3 is required.
+    Creates an eftoolkit.sql.DuckDB instance with S3/DigitalOcean Spaces
+    configuration based on config_dict values.
 
     Args:
         config_dict: Configuration dictionary containing draft_id and S3 credentials.
-        need_write_access: Whether write access is needed (deprecated, not used)
 
-    Yields:
-        DuckDBConnection: A configured DuckDB connection
+    Returns:
+        DuckDB: A configured eftoolkit.sql.DuckDB instance
 
     Example:
-        >>> with duckdb_connection(config_dict) as conn:
-        ...     df = conn.df('SELECT * FROM my_table')
+        >>> with get_duckdb(config_dict) as db:
+        ...     df = db.query('SELECT * FROM my_table')
     '''
-    conn = DuckDBConnection(config_dict, need_write_access)
-    try:
-        yield conn
-    finally:
-        conn.close()
+    draft_id = config_dict.get('draft_id', '')
+    database_path = project_root / 'src' / 'duckdb_databases' / f'{draft_id}.duckdb'
+
+    s3_access_key_id_var_name = config_dict.get('s3_access_key_id_var_name')
+    s3_secret_access_key_var_name = config_dict.get('s3_secret_access_key_var_name')
+
+    # Only configure S3 if credential var names are provided
+    s3_access_key_id = (
+        os.getenv(s3_access_key_id_var_name) if s3_access_key_id_var_name else None
+    )
+    s3_secret_access_key = (
+        os.getenv(s3_secret_access_key_var_name)
+        if s3_secret_access_key_var_name
+        else None
+    )
+
+    return DuckDB(
+        database=str(database_path),
+        s3_access_key_id=s3_access_key_id,
+        s3_secret_access_key=s3_secret_access_key,
+        s3_region=S3_REGION,
+        s3_endpoint=S3_ENDPOINT,
+    )

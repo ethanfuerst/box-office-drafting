@@ -23,18 +23,18 @@ def test_update_dashboard_writes_all_dashboard_elements(monkeypatch):
         (pd.DataFrame({'B': [2]}), 'I4', None),
     ]
 
-    mock_conn = MagicMock()
+    mock_db = MagicMock()
     mock_result = MagicMock()
     mock_result.fetchnumpy.return_value = {
         'published_timestamp_utc': np.array([np.datetime64('2024-01-01T00:00:00')])
     }
-    mock_conn.query.return_value = mock_result
+    mock_db.connection.query.return_value = mock_result
 
     config = make_config_dict(update_type='s3')
 
-    with patch('src.utils.gsheet.duckdb_connection') as mock_ctx:
-        mock_ctx.return_value.__enter__.return_value = mock_conn
-        mock_ctx.return_value.__exit__.return_value = None
+    with patch('src.utils.gsheet.get_duckdb') as mock_get_duckdb:
+        mock_get_duckdb.return_value.__enter__.return_value = mock_db
+        mock_get_duckdb.return_value.__exit__.return_value = None
 
         with patch('src.utils.gsheet.df_to_sheet') as mock_df_to_sheet:
             from src.utils.gsheet import update_dashboard
@@ -59,18 +59,18 @@ def test_update_dashboard_updates_last_updated_timestamp(monkeypatch):
     mock_gsheet_dashboard.sheet_height = 10
     mock_gsheet_dashboard.dashboard_elements = []
 
-    mock_conn = MagicMock()
+    mock_db = MagicMock()
     mock_result = MagicMock()
     mock_result.fetchnumpy.return_value = {
         'published_timestamp_utc': np.array([np.datetime64('2025-01-15T12:00:00')])
     }
-    mock_conn.query.return_value = mock_result
+    mock_db.connection.query.return_value = mock_result
 
     config = make_config_dict(update_type='s3')
 
-    with patch('src.utils.gsheet.duckdb_connection') as mock_ctx:
-        mock_ctx.return_value.__enter__.return_value = mock_conn
-        mock_ctx.return_value.__exit__.return_value = None
+    with patch('src.utils.gsheet.get_duckdb') as mock_get_duckdb:
+        mock_get_duckdb.return_value.__enter__.return_value = mock_db
+        mock_get_duckdb.return_value.__exit__.return_value = None
 
         with patch('src.utils.gsheet.df_to_sheet'):
             from src.utils.gsheet import update_dashboard
