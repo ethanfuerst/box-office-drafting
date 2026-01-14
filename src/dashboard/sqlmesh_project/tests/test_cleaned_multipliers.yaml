@@ -1,0 +1,93 @@
+test_movie_multiplier_filters_type:
+  model: cleaned.movie_multiplier_overrides
+  description: Only rows with type=movie are included
+  inputs:
+    raw.multipliers_and_exclusions:
+      rows:
+        - type: movie
+          value: Sequel Movie
+          multiplier: "0.5"
+        - type: round
+          value: "3"
+          multiplier: "1.5"
+        - type: exclusion
+          value: Excluded Movie
+          multiplier: null
+  outputs:
+    query:
+      rows:
+        - movie: Sequel Movie
+          multiplier: 0.5
+
+
+test_movie_multiplier_casts_to_double:
+  model: cleaned.movie_multiplier_overrides
+  description: Multiplier is cast to double
+  inputs:
+    raw.multipliers_and_exclusions:
+      rows:
+        - type: movie
+          value: Half Credit Movie
+          multiplier: "0.5"
+        - type: movie
+          value: Double Credit Movie
+          multiplier: "2.0"
+  outputs:
+    query:
+      rows:
+        - movie: Half Credit Movie
+          multiplier: 0.5
+        - movie: Double Credit Movie
+          multiplier: 2.0
+
+
+test_round_multiplier_filters_type:
+  model: cleaned.round_multiplier_overrides
+  description: Only rows with type=round are included
+  inputs:
+    raw.multipliers_and_exclusions:
+      rows:
+        - type: movie
+          value: Some Movie
+          multiplier: "0.5"
+        - type: round
+          value: "3"
+          multiplier: "1.5"
+        - type: round
+          value: "4"
+          multiplier: "2.0"
+        - type: exclusion
+          value: Excluded
+          multiplier: null
+  outputs:
+    query:
+      rows:
+        - round: "3"
+          multiplier: 1.5
+        - round: "4"
+          multiplier: 2.0
+
+
+test_draft_year_exclusions_filters_type:
+  model: cleaned.draft_year_exclusions
+  description: Only rows with type=exclusion are included
+  inputs:
+    raw.multipliers_and_exclusions:
+      rows:
+        - type: movie
+          value: Some Movie
+          multiplier: "0.5"
+        - type: round
+          value: "3"
+          multiplier: "1.5"
+        - type: exclusion
+          value: Prior Year Release
+          multiplier: null
+        - type: exclusion
+          value: Re-release
+          multiplier: null
+  outputs:
+    query:
+      rows:
+        - movie: Prior Year Release
+        - movie: Re-release

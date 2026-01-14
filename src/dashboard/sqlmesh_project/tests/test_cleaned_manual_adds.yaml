@@ -1,0 +1,40 @@
+test_cleaned_manual_adds_casts_types:
+  model: cleaned.manual_adds
+  description: Manual adds casts string inputs to proper types
+  inputs:
+    raw.manual_adds:
+      rows:
+        - title: "Limited Release Movie"
+          revenue: "5000000"
+          domestic_rev: "3000000"
+          foreign_rev: "2000000"
+          release_date: "2024-06-15"
+  outputs:
+    query:
+      rows:
+        - title: Limited Release Movie
+          revenue: 5000000
+          domestic_rev: 3000000
+          foreign_rev: 2000000
+          first_seen_date: 2024-06-15
+
+
+test_cleaned_manual_adds_handles_nulls:
+  model: cleaned.manual_adds
+  description: Null values are handled gracefully
+  inputs:
+    raw.manual_adds:
+      rows:
+        - title: Incomplete Entry
+          revenue: null
+          domestic_rev: null
+          foreign_rev: null
+          release_date: null
+  outputs:
+    query:
+      rows:
+        - title: Incomplete Entry
+          revenue: null
+          domestic_rev: null
+          foreign_rev: null
+          first_seen_date: null

@@ -1,0 +1,4 @@
+title,overall_pick,better_pick_title,original_pick_revenue,multiplier,better_pick_scored_revenue,missed_revenue,better_pick_drafted_by_someone_else,better_pick_drafted_by_no_one
+Movie Gamma,3,Movie Alpha,80000000,1.0,150000000,70000000,true,false
+Movie Delta,4,Movie Beta,60000000,1.0,120000000,60000000,true,false
+Movie Delta,4,Movie Alpha,60000000,1.0,150000000,90000000,true,false

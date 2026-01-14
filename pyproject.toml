@@ -59,7 +59,9 @@ addopts = [
     "--cov=src",
     "--cov-report=term-missing",
     "--cov-report=html",
-    "-v",
+]
+markers = [
+    "integration: marks tests as integration tests (run SQLMesh test subprocess)",
 ]
 
 [tool.coverage.run]

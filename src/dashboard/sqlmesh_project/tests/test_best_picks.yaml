@@ -1,0 +1,314 @@
+test_best_picks_calculates_positions_gained:
+  model: dashboards.best_picks
+  description: Positions gained is calculated as draft_order_rank minus revenue_order_rank
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Sleeper Hit
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 5
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "05/01/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Expected Hit
+          drafted_by: Bob
+          revenue: 80000000
+          scored_revenue: 80000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 48000000
+          domestic_pct: 0.6
+          foreign_rev: 32000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/01/2024"
+          still_in_theaters: "No"
+  outputs:
+    query:
+      rows:
+        - rank: 1
+          title: Sleeper Hit
+          drafted_by: Alice
+          overall_pick: 5
+          positions_gained: 4
+          actual_revenue: 100000000
+
+
+test_best_picks_excludes_negative_gap:
+  model: dashboards.best_picks
+  description: Movies where revenue rank is worse than draft position are excluded
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Good Pick
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 3
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "03/01/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Bad Pick
+          drafted_by: Bob
+          revenue: 50000000
+          scored_revenue: 50000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 30000000
+          domestic_pct: 0.6
+          foreign_rev: 20000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/01/2024"
+          still_in_theaters: "No"
+  outputs:
+    query:
+      rows:
+        - rank: 1
+          title: Good Pick
+          drafted_by: Alice
+          overall_pick: 3
+          positions_gained: 2
+          actual_revenue: 100000000
+
+
+test_best_picks_excludes_zero_revenue:
+  model: dashboards.best_picks
+  description: Movies with zero scored revenue are excluded from best picks
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Released Movie
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 2
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "02/01/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Unreleased Movie
+          drafted_by: Bob
+          revenue: 0
+          scored_revenue: 0
+          round: 1
+          overall_pick: 10
+          multiplier: 1.0
+          domestic_rev: 0
+          domestic_pct: 0.0
+          foreign_rev: 0
+          foreign_pct: 0.0
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "10/01/2024"
+          still_in_theaters: "No"
+  outputs:
+    query:
+      rows:
+        - rank: 1
+          title: Released Movie
+          drafted_by: Alice
+          overall_pick: 2
+          positions_gained: 1
+          actual_revenue: 100000000
+
+
+test_best_picks_orders_by_gap_then_overall_pick:
+  model: dashboards.best_picks
+  description: Best picks are ordered by positions gained desc then overall pick asc
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Big Sleeper
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 2
+          overall_pick: 6
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "06/01/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Small Sleeper
+          drafted_by: Bob
+          revenue: 90000000
+          scored_revenue: 90000000
+          round: 1
+          overall_pick: 4
+          multiplier: 1.0
+          domestic_rev: 54000000
+          domestic_pct: 0.6
+          foreign_rev: 36000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "04/01/2024"
+          still_in_theaters: "No"
+        - rank: 3
+          title: Moderate Pick
+          drafted_by: Charlie
+          revenue: 80000000
+          scored_revenue: 80000000
+          round: 1
+          overall_pick: 5
+          multiplier: 1.0
+          domestic_rev: 48000000
+          domestic_pct: 0.6
+          foreign_rev: 32000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "05/01/2024"
+          still_in_theaters: "No"
+  outputs:
+    query:
+      rows:
+        - rank: 1
+          title: Big Sleeper
+          drafted_by: Alice
+          overall_pick: 6
+          positions_gained: 5
+          actual_revenue: 100000000
+        - rank: 2
+          title: Small Sleeper
+          drafted_by: Bob
+          overall_pick: 4
+          positions_gained: 2
+          actual_revenue: 90000000
+        - rank: 3
+          title: Moderate Pick
+          drafted_by: Charlie
+          overall_pick: 5
+          positions_gained: 2
+          actual_revenue: 80000000
+
+
+test_best_picks_empty_when_no_positive_gaps:
+  model: dashboards.best_picks
+  description: Returns empty result when no movies outperformed their draft position
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: First Pick Best
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/01/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Second Pick Second
+          drafted_by: Bob
+          revenue: 50000000
+          scored_revenue: 50000000
+          round: 1
+          overall_pick: 2
+          multiplier: 1.0
+          domestic_rev: 30000000
+          domestic_pct: 0.6
+          foreign_rev: 20000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "02/01/2024"
+          still_in_theaters: "No"
+  outputs:
+    query:
+      rows: []
+
+
+test_best_picks_excludes_undrafted_movies:
+  model: dashboards.best_picks
+  description: Undrafted movies are excluded from best picks calculation
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Undrafted Hit
+          drafted_by: null
+          revenue: 200000000
+          scored_revenue: 200000000
+          round: null
+          overall_pick: null
+          multiplier: 1.0
+          domestic_rev: 100000000
+          domestic_pct: 0.5
+          foreign_rev: 100000000
+          foreign_pct: 0.5
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/01/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Drafted Sleeper
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 3
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "03/01/2024"
+          still_in_theaters: "No"
+  outputs:
+    query:
+      rows:
+        - rank: 1
+          title: Drafted Sleeper
+          drafted_by: Alice
+          overall_pick: 3
+          positions_gained: 1
+          actual_revenue: 100000000

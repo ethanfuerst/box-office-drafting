@@ -1,0 +1,9 @@
+year: 2026
+name: Test Draft
+sheet_name: Test Sheet
+draft_id: test_draft
+update_type: web
+gspread_credentials_name: TEST_GSPREAD_CREDS
+s3_access_key_id_var_name: TEST_S3_KEY_ID
+s3_secret_access_key_var_name: TEST_S3_SECRET
+bucket: test-bucket

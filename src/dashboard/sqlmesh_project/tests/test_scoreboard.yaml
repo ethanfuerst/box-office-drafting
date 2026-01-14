@@ -1,0 +1,222 @@
+test_scoreboard_aggregates_by_drafter:
+  model: dashboards.scoreboard
+  description: Scoreboard correctly aggregates revenue and counts by drafter
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Movie A
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Movie B
+          drafted_by: Bob
+          revenue: 80000000
+          scored_revenue: 80000000
+          round: 1
+          overall_pick: 2
+          multiplier: 1.0
+          domestic_rev: 50000000
+          domestic_pct: 0.625
+          foreign_rev: 30000000
+          foreign_pct: 0.375
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "02/01/2024"
+          still_in_theaters: "No"
+        - rank: 3
+          title: Movie C
+          drafted_by: Alice
+          revenue: 60000000
+          scored_revenue: 60000000
+          round: 2
+          overall_pick: 4
+          multiplier: 1.0
+          domestic_rev: 35000000
+          domestic_pct: 0.5833
+          foreign_rev: 25000000
+          foreign_pct: 0.4167
+          better_pick_title: Movie A
+          better_pick_scored_revenue: 100000000
+          first_seen_date: "03/01/2024"
+          still_in_theaters: "No"
+  outputs:
+    query:
+      rows:
+        - drafted_by_name: Alice
+          scored_revenue: 160000000
+          num_released: 2
+          correctly_drafted_pick_count: 1
+          correct_pick_pct: 0.5
+          unadjusted_revenue: 160000000
+        - drafted_by_name: Bob
+          scored_revenue: 80000000
+          num_released: 1
+          correctly_drafted_pick_count: 1
+          correct_pick_pct: 1.0
+          unadjusted_revenue: 80000000
+
+
+test_scoreboard_excludes_undrafted_movies:
+  model: dashboards.scoreboard
+  description: Scoreboard excludes movies with null drafted_by
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Movie A
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Undrafted Movie
+          drafted_by: null
+          revenue: 200000000
+          scored_revenue: 200000000
+          round: null
+          overall_pick: null
+          multiplier: 1.0
+          domestic_rev: 100000000
+          domestic_pct: 0.5
+          foreign_rev: 100000000
+          foreign_pct: 0.5
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/01/2024"
+          still_in_theaters: "No"
+  outputs:
+    query:
+      rows:
+        - drafted_by_name: Alice
+          scored_revenue: 100000000
+          num_released: 1
+          correctly_drafted_pick_count: 1
+          correct_pick_pct: 1.0
+          unadjusted_revenue: 100000000
+
+
+test_scoreboard_correctly_drafted_pick_count:
+  model: dashboards.scoreboard
+  description: Correctly drafted pick count only includes movies with better_pick_scored_revenue=0
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Good Pick
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Bad Pick
+          drafted_by: Alice
+          revenue: 10000000
+          scored_revenue: 10000000
+          round: 2
+          overall_pick: 3
+          multiplier: 1.0
+          domestic_rev: 6000000
+          domestic_pct: 0.6
+          foreign_rev: 4000000
+          foreign_pct: 0.4
+          better_pick_title: Good Pick
+          better_pick_scored_revenue: 100000000
+          first_seen_date: "03/01/2024"
+          still_in_theaters: "No"
+  outputs:
+    query:
+      rows:
+        - drafted_by_name: Alice
+          scored_revenue: 110000000
+          num_released: 2
+          correctly_drafted_pick_count: 1
+          correct_pick_pct: 0.5
+          unadjusted_revenue: 110000000
+
+
+test_scoreboard_orders_by_scored_revenue_desc:
+  model: dashboards.scoreboard
+  description: Scoreboard orders drafters by scored revenue descending
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Movie A
+          drafted_by: Low Scorer
+          revenue: 10000000
+          scored_revenue: 10000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 6000000
+          domestic_pct: 0.6
+          foreign_rev: 4000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Movie B
+          drafted_by: High Scorer
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 2
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "02/01/2024"
+          still_in_theaters: "No"
+  outputs:
+    query:
+      rows:
+        - drafted_by_name: High Scorer
+          scored_revenue: 100000000
+          num_released: 1
+          correctly_drafted_pick_count: 1
+          correct_pick_pct: 1.0
+          unadjusted_revenue: 100000000
+        - drafted_by_name: Low Scorer
+          scored_revenue: 10000000
+          num_released: 1
+          correctly_drafted_pick_count: 1
+          correct_pick_pct: 1.0
+          unadjusted_revenue: 10000000
