@@ -109,65 +109,26 @@ class GoogleSheetDashboard:
             ),
         ]
 
-        # Calculate available space for picks tables
-        # Formula: released_movies_height - scoreboard_height - 2 (for blank rows/spacing)
-        available_height = len(self.released_movies_df) - len(self.scoreboard_df) - 2
+        # Calculate layout for picks tables
+        layout = self.calculate_picks_table_layout(
+            scoreboard_length=len(self.scoreboard_df),
+            released_movies_length=len(self.released_movies_df),
+            worst_picks_length=len(self.worst_picks_df),
+            best_picks_length=len(self.best_picks_df),
+        )
 
+        self.picks_row_num = layout['worst_picks_row_num']
+        self.add_both_picks_tables = layout['add_both_picks_tables']
+        self.best_picks_row_num = layout['best_picks_row_num']
         self.add_picks_table = (
-            available_height > 0
+            layout['worst_picks_height'] > 0
             and len(self.worst_picks_df) > 1
         )
 
-        # First picks table starts at: 5 (title rows) + scoreboard_height + 2 (blank + title)
-        self.picks_row_num = 5 + len(self.scoreboard_df) + 2
-
-        # Track whether we're showing both tables
-        self.add_both_picks_tables = False
-        self.best_picks_row_num = None
-
-        # Always try to show both tables
-        # Calculate space needed for both tables
-        # Each table needs: 1 (title row) + 1 (header row) + data rows
-        # Plus: 2 (blank row separator between tables)
-        min_rows_per_table = 2  # title + header (minimum to show anything useful)
-        separator_rows = 2  # blank row between tables
-
-        # Check if we have enough space for both tables
-        total_required = min_rows_per_table * 2 + separator_rows
-
-        if available_height >= total_required and len(self.worst_picks_df) > 1 and len(self.best_picks_df) > 1:
+        if layout['add_both_picks_tables']:
             # We have space for both tables
-            self.add_both_picks_tables = True
-            self.add_picks_table = True
-
-            # Split available height between the two tables
-            # Total consumption per table: 1 (title) + 1 (header) + N (data rows)
-            # Total space: available_height = worst_title + worst_header + worst_data + separator + best_title + best_header + best_data
-            # After subtracting fixed overhead: available_height - 2 (titles) - 2 (separator) = space for headers + data
-            # Since headers are 1 row each: available_height - 2 - 2 - 2 = available_height - 6 = space for data only
-            # Actually, the header is part of the table, so: available_height - 2 (titles) - 2 (separator) = space for both tables (header+data)
-
-            # Available space for both tables' content (header + data rows)
-            usable_height = available_height - 2 - separator_rows  # subtract title rows and separator
-
-            # Split evenly for data rows (each table gets header + data)
-            height_per_table = usable_height // 2
-
-            # Worst picks comes first
-            worst_picks_height = min(height_per_table, len(self.worst_picks_df))
-            self.worst_picks_df = self.worst_picks_df.head(worst_picks_height)
-
-            # Best picks comes second, after worst picks + separator
-            # best_picks_row_num = picks_row_num + 1 (title) + worst_picks_height + separator_rows
-            self.best_picks_row_num = self.picks_row_num + 1 + worst_picks_height + separator_rows
-
-            # Calculate remaining height for best picks
-            # Remaining space = usable_height - worst_picks_height
-            best_picks_height = min(
-                usable_height - worst_picks_height,
-                len(self.best_picks_df)
-            )
-            self.best_picks_df = self.best_picks_df.head(best_picks_height)
+            self.worst_picks_df = self.worst_picks_df.head(layout['worst_picks_height'])
+            self.best_picks_df = self.best_picks_df.head(layout['best_picks_height'])
 
             # Add worst picks table
             self.dashboard_elements.append(
@@ -201,31 +162,114 @@ class GoogleSheetDashboard:
                 )
             )
 
-            logging.info(f"Showing both picks tables: worst_picks ({worst_picks_height} rows) and best_picks ({best_picks_height} rows)")
-        else:
+            logging.info(
+                f"Showing both picks tables: worst_picks ({layout['worst_picks_height']} rows) "
+                f"and best_picks ({layout['best_picks_height']} rows)"
+            )
+        elif self.add_picks_table:
             # Not enough space for both, fall back to worst picks only
-            logging.info(f"Not enough space for both tables (available: {available_height}, required: {total_required}). Falling back to worst picks only.")
-            self.add_picks_table = available_height > 0 and len(self.worst_picks_df) > 1
+            self.worst_picks_df = self.worst_picks_df.head(layout['worst_picks_height'])
 
-            if self.add_picks_table:
-                self.worst_picks_df = self.worst_picks_df.head(available_height)
-
-                self.dashboard_elements.append(
-                    (
-                        self.worst_picks_df,
-                        f'B{self.picks_row_num}',
-                        {
-                            key.replace('12', str(self.picks_row_num)).replace(
-                                '13', str(self.picks_row_num + 1)
-                            ): value
-                            for key, value in load_format_config(
-                                project_root / 'src' / 'assets' / 'worst_picks_format.json'
-                            ).items()
-                        },
-                    )
+            self.dashboard_elements.append(
+                (
+                    self.worst_picks_df,
+                    f'B{self.picks_row_num}',
+                    {
+                        key.replace('12', str(self.picks_row_num)).replace(
+                            '13', str(self.picks_row_num + 1)
+                        ): value
+                        for key, value in load_format_config(
+                            project_root / 'src' / 'assets' / 'worst_picks_format.json'
+                        ).items()
+                    },
                 )
+            )
 
         self.setup_worksheet()
+
+    @staticmethod
+    def calculate_picks_table_layout(
+        scoreboard_length: int,
+        released_movies_length: int,
+        worst_picks_length: int,
+        best_picks_length: int,
+    ) -> dict:
+        """
+        Calculate the layout for picks tables based on available space.
+
+        Args:
+            scoreboard_length: Number of rows in scoreboard (not including header)
+            released_movies_length: Number of rows in released movies (not including header)
+            worst_picks_length: Number of rows in worst picks data (not including header)
+            best_picks_length: Number of rows in best picks data (not including header)
+
+        Returns:
+            dict with layout information including row numbers and heights
+        """
+        # Calculate available space for picks tables
+        # Formula: released_movies_height - scoreboard_height - 3 (for blank rows/spacing)
+        available_height = released_movies_length - scoreboard_length - 3
+
+        # First picks table starts at: 5 (title rows) + scoreboard_height + 2 (blank + title)
+        picks_row_num = 5 + scoreboard_length + 2
+
+        # Track whether we're showing both tables
+        add_both_picks_tables = False
+        best_picks_row_num = None
+        worst_picks_height = 0
+        best_picks_height = 0
+
+        # Always try to show both tables
+        # Calculate space needed for both tables
+        # Each table needs: 1 (title row) + 1 (header row) + data rows
+        # Plus: 2 (blank row separator between tables)
+        min_rows_per_table = 2  # title + header (minimum to show anything useful)
+        separator_rows = 2  # blank row between tables
+
+        # Check if we have enough space for both tables
+        total_required = min_rows_per_table * 2 + separator_rows
+
+        if (
+            available_height >= total_required
+            and worst_picks_length > 1
+            and best_picks_length > 1
+        ):
+            # We have space for both tables
+            add_both_picks_tables = True
+
+            # Split available height between the two tables
+            # Total consumption per table: 1 (title) + 1 (header) + N (data rows)
+            # Available space for both tables' content (header + data rows)
+            usable_height = (
+                available_height - 2 - separator_rows
+            )  # subtract title rows and separator
+
+            # Split evenly for data rows (each table gets header + data)
+            height_per_table = usable_height // 2
+
+            # Worst picks comes first
+            worst_picks_height = min(height_per_table, worst_picks_length)
+
+            # Best picks comes second, after worst picks + separator
+            # best_picks_row_num = picks_row_num + 1 (title) + worst_picks_height + separator_rows
+            best_picks_row_num = picks_row_num + 1 + worst_picks_height + separator_rows
+
+            # Calculate remaining height for best picks
+            # Remaining space = usable_height - worst_picks_height
+            best_picks_height = min(usable_height - worst_picks_height, best_picks_length)
+        else:
+            # Not enough space for both, fall back to worst picks only
+            if available_height > 0 and worst_picks_length > 1:
+                worst_picks_height = min(available_height, worst_picks_length)
+
+        return {
+            'available_height': available_height,
+            'add_both_picks_tables': add_both_picks_tables,
+            'worst_picks_row_num': picks_row_num,
+            'worst_picks_height': worst_picks_height,
+            'best_picks_row_num': best_picks_row_num,
+            'best_picks_height': best_picks_height,
+        }
 
     def setup_worksheet(self) -> None:
         """Create and configure the Google Sheet worksheet."""
