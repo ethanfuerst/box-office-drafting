@@ -1,0 +1,44 @@
+test_cleaned_drafter_selects_columns:
+  model: cleaned.drafter
+  description: Drafter model selects correct columns from raw
+  inputs:
+    raw.drafter:
+      rows:
+        - movie: Movie A
+          name: Alice
+          overall_pick: 1
+          round: 1
+        - movie: Movie B
+          name: Bob
+          overall_pick: 2
+          round: 1
+  outputs:
+    query:
+      rows:
+        - movie: Movie A
+          name: Alice
+          overall_pick: 1
+          round: 1
+        - movie: Movie B
+          name: Bob
+          overall_pick: 2
+          round: 1
+
+
+test_cleaned_drafter_handles_null_values:
+  model: cleaned.drafter
+  description: Null values pass through correctly
+  inputs:
+    raw.drafter:
+      rows:
+        - movie: Movie A
+          name: null
+          overall_pick: null
+          round: null
+  outputs:
+    query:
+      rows:
+        - movie: Movie A
+          name: null
+          overall_pick: null
+          round: null

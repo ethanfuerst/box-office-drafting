@@ -1,0 +1,248 @@
+test_worst_picks_ranks_by_missed_revenue:
+  model: dashboards.worst_picks
+  description: Worst picks are ranked by missed revenue descending
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Good Movie
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Bad Pick 1
+          drafted_by: Bob
+          revenue: 10000000
+          scored_revenue: 10000000
+          round: 1
+          overall_pick: 2
+          multiplier: 1.0
+          domestic_rev: 6000000
+          domestic_pct: 0.6
+          foreign_rev: 4000000
+          foreign_pct: 0.4
+          better_pick_title: Good Movie
+          better_pick_scored_revenue: 100000000
+          first_seen_date: "02/01/2024"
+          still_in_theaters: "No"
+        - rank: 3
+          title: Bad Pick 2
+          drafted_by: Charlie
+          revenue: 5000000
+          scored_revenue: 5000000
+          round: 1
+          overall_pick: 3
+          multiplier: 1.0
+          domestic_rev: 3000000
+          domestic_pct: 0.6
+          foreign_rev: 2000000
+          foreign_pct: 0.4
+          better_pick_title: Good Movie
+          better_pick_scored_revenue: 100000000
+          first_seen_date: "03/01/2024"
+          still_in_theaters: "No"
+    combined.better_pick_int:
+      rows:
+        - title: Bad Pick 1
+          overall_pick: 2
+          better_pick_title: Good Movie
+          original_pick_revenue: 10000000
+          multiplier: 1.0
+          better_pick_scored_revenue: 100000000
+          missed_revenue: 90000000
+          better_pick_drafted_by_someone_else: true
+          better_pick_drafted_by_no_one: false
+        - title: Bad Pick 2
+          overall_pick: 3
+          better_pick_title: Good Movie
+          original_pick_revenue: 5000000
+          multiplier: 1.0
+          better_pick_scored_revenue: 100000000
+          missed_revenue: 95000000
+          better_pick_drafted_by_someone_else: true
+          better_pick_drafted_by_no_one: false
+  outputs:
+    query:
+      rows:
+        - rank: 1
+          title: Bad Pick 2
+          drafted_by: Charlie
+          overall_pick: 3
+          number_of_better_picks: 1
+          missed_revenue: 95000000
+        - rank: 2
+          title: Bad Pick 1
+          drafted_by: Bob
+          overall_pick: 2
+          number_of_better_picks: 1
+          missed_revenue: 90000000
+
+
+test_worst_picks_counts_better_picks:
+  model: dashboards.worst_picks
+  description: Number of better picks is counted correctly
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Great Movie
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Good Movie
+          drafted_by: Bob
+          revenue: 80000000
+          scored_revenue: 80000000
+          round: 1
+          overall_pick: 2
+          multiplier: 1.0
+          domestic_rev: 48000000
+          domestic_pct: 0.6
+          foreign_rev: 32000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "02/01/2024"
+          still_in_theaters: "No"
+        - rank: 3
+          title: Worst Pick
+          drafted_by: Charlie
+          revenue: 1000000
+          scored_revenue: 1000000
+          round: 1
+          overall_pick: 3
+          multiplier: 1.0
+          domestic_rev: 600000
+          domestic_pct: 0.6
+          foreign_rev: 400000
+          foreign_pct: 0.4
+          better_pick_title: Great Movie
+          better_pick_scored_revenue: 100000000
+          first_seen_date: "03/01/2024"
+          still_in_theaters: "No"
+    combined.better_pick_int:
+      rows:
+        - title: Worst Pick
+          overall_pick: 3
+          better_pick_title: Great Movie
+          original_pick_revenue: 1000000
+          multiplier: 1.0
+          better_pick_scored_revenue: 100000000
+          missed_revenue: 99000000
+          better_pick_drafted_by_someone_else: true
+          better_pick_drafted_by_no_one: false
+        - title: Worst Pick
+          overall_pick: 3
+          better_pick_title: Good Movie
+          original_pick_revenue: 1000000
+          multiplier: 1.0
+          better_pick_scored_revenue: 80000000
+          missed_revenue: 79000000
+          better_pick_drafted_by_someone_else: true
+          better_pick_drafted_by_no_one: false
+  outputs:
+    query:
+      rows:
+        - rank: 1
+          title: Worst Pick
+          drafted_by: Charlie
+          overall_pick: 3
+          number_of_better_picks: 2
+          missed_revenue: 99000000
+
+
+test_worst_picks_excludes_undrafted_better_picks:
+  model: dashboards.worst_picks
+  description: Better picks from undrafted movies are excluded
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Undrafted Hit
+          drafted_by: null
+          revenue: 200000000
+          scored_revenue: 200000000
+          round: null
+          overall_pick: null
+          multiplier: 1.0
+          domestic_rev: 100000000
+          domestic_pct: 0.5
+          foreign_rev: 100000000
+          foreign_pct: 0.5
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/01/2024"
+          still_in_theaters: "No"
+        - rank: 2
+          title: Drafted Movie
+          drafted_by: Alice
+          revenue: 50000000
+          scored_revenue: 50000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 30000000
+          domestic_pct: 0.6
+          foreign_rev: 20000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "02/01/2024"
+          still_in_theaters: "No"
+    combined.better_pick_int:
+      rows: []
+  outputs:
+    query:
+      rows: []
+
+
+test_worst_picks_empty_when_no_better_picks:
+  model: dashboards.worst_picks
+  description: Returns empty result when all picks are optimal
+  inputs:
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Best Pick
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+    combined.better_pick_int:
+      rows: []
+  outputs:
+    query:
+      rows: []

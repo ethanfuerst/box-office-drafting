@@ -1,0 +1,211 @@
+test_base_query_joins_better_pick:
+  model: combined.base_query
+  description: Base query correctly joins better pick data
+  inputs:
+    combined.base_query_int:
+      rows:
+        - title: Movie A
+          drafted_by: Alice
+          overall_pick: 1
+          revenue: 100000000
+          round: 1
+          multiplier: 1.0
+          scored_revenue: 100000000
+          domestic_rev: 60000000
+          foreign_rev: 40000000
+          domestic_pct: 0.6
+          foreign_pct: 0.4
+          first_seen_date: 2024-01-15
+          still_in_theaters: false
+        - title: Movie B
+          drafted_by: Bob
+          overall_pick: 2
+          revenue: 10000000
+          round: 1
+          multiplier: 1.0
+          scored_revenue: 10000000
+          domestic_rev: 6000000
+          foreign_rev: 4000000
+          domestic_pct: 0.6
+          foreign_pct: 0.4
+          first_seen_date: 2024-02-01
+          still_in_theaters: false
+    combined.better_pick_final:
+      rows:
+        - overall_pick: 2
+          better_pick_title: Movie A
+          better_pick_scored_revenue: 100000000
+  outputs:
+    partial: true
+    query:
+      rows:
+        - title: Movie A
+          drafted_by: Alice
+          overall_pick: 1
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+        - title: Movie B
+          drafted_by: Bob
+          overall_pick: 2
+          better_pick_title: Movie A
+          better_pick_scored_revenue: 100000000
+
+
+test_base_query_excludes_undrafted:
+  model: combined.base_query
+  description: Base query excludes movies with null drafted_by
+  inputs:
+    combined.base_query_int:
+      rows:
+        - title: Drafted Movie
+          drafted_by: Alice
+          overall_pick: 1
+          revenue: 100000000
+          round: 1
+          multiplier: 1.0
+          scored_revenue: 100000000
+          domestic_rev: 60000000
+          foreign_rev: 40000000
+          domestic_pct: 0.6
+          foreign_pct: 0.4
+          first_seen_date: 2024-01-15
+          still_in_theaters: false
+        - title: Undrafted Movie
+          drafted_by: null
+          overall_pick: null
+          revenue: 200000000
+          round: null
+          multiplier: 1.0
+          scored_revenue: 200000000
+          domestic_rev: 100000000
+          foreign_rev: 100000000
+          domestic_pct: 0.5
+          foreign_pct: 0.5
+          first_seen_date: 2024-01-01
+          still_in_theaters: false
+    combined.better_pick_final:
+      rows: []
+  outputs:
+    query:
+      rows:
+        - rank: 1
+          title: Drafted Movie
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+
+
+test_base_query_still_in_theaters_formatting:
+  model: combined.base_query
+  description: Still in theaters shows Yes/No based on scored_revenue and still_in_theaters flag
+  inputs:
+    combined.base_query_int:
+      rows:
+        - title: Active Movie
+          drafted_by: Alice
+          overall_pick: 1
+          revenue: 100000000
+          round: 1
+          multiplier: 1.0
+          scored_revenue: 100000000
+          domestic_rev: 60000000
+          foreign_rev: 40000000
+          domestic_pct: 0.6
+          foreign_pct: 0.4
+          first_seen_date: 2024-01-15
+          still_in_theaters: true
+        - title: Finished Movie
+          drafted_by: Bob
+          overall_pick: 2
+          revenue: 50000000
+          round: 1
+          multiplier: 1.0
+          scored_revenue: 50000000
+          domestic_rev: 30000000
+          foreign_rev: 20000000
+          domestic_pct: 0.6
+          foreign_pct: 0.4
+          first_seen_date: 2024-02-01
+          still_in_theaters: false
+        - title: Zero Revenue
+          drafted_by: Charlie
+          overall_pick: 3
+          revenue: 0
+          round: 1
+          multiplier: 1.0
+          scored_revenue: 0
+          domestic_rev: 0
+          foreign_rev: 0
+          domestic_pct: 0.0
+          foreign_pct: 0.0
+          first_seen_date: 2024-12-01
+          still_in_theaters: true
+    combined.better_pick_final:
+      rows: []
+  outputs:
+    partial: true
+    query:
+      rows:
+        - title: Active Movie
+          still_in_theaters: "Yes"
+        - title: Finished Movie
+          still_in_theaters: "No"
+        - title: Zero Revenue
+          still_in_theaters: "No"
+
+
+test_base_query_orders_by_scored_revenue:
+  model: combined.base_query
+  description: Base query orders results by scored revenue descending then title ascending
+  inputs:
+    combined.base_query_int:
+      rows:
+        - title: B Movie
+          drafted_by: Alice
+          overall_pick: 1
+          revenue: 50000000
+          round: 1
+          multiplier: 1.0
+          scored_revenue: 50000000
+          domestic_rev: 30000000
+          foreign_rev: 20000000
+          domestic_pct: 0.6
+          foreign_pct: 0.4
+          first_seen_date: 2024-01-15
+          still_in_theaters: false
+        - title: A Movie
+          drafted_by: Bob
+          overall_pick: 2
+          revenue: 100000000
+          round: 1
+          multiplier: 1.0
+          scored_revenue: 100000000
+          domestic_rev: 60000000
+          foreign_rev: 40000000
+          domestic_pct: 0.6
+          foreign_pct: 0.4
+          first_seen_date: 2024-02-01
+          still_in_theaters: false
+    combined.better_pick_final:
+      rows: []
+  outputs:
+    partial: true
+    query:
+      rows:
+        - rank: 1
+          title: A Movie
+          scored_revenue: 100000000
+        - rank: 2
+          title: B Movie
+          scored_revenue: 50000000

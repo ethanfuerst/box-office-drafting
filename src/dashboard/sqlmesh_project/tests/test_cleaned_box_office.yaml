@@ -1,0 +1,66 @@
+test_cleaned_box_office_casts_types:
+  model: cleaned.box_office_mojo_dump
+  description: Revenue columns are cast to BIGINT
+  inputs:
+    raw.box_office_mojo_dump:
+      rows:
+        - title: Movie A
+          revenue: "100000000"
+          domestic_rev: "60000000"
+          foreign_rev: "40000000"
+          loaded_date: 2024-01-15
+          release_year: 2024
+          published_timestamp_utc: 2024-01-15 10:00:00
+  outputs:
+    partial: true
+    query:
+      rows:
+        - title: Movie A
+          revenue: 100000000
+          domestic_rev: 60000000
+          foreign_rev: 40000000
+          loaded_date: 2024-01-15
+
+
+test_cleaned_box_office_calculates_revenue_from_parts:
+  model: cleaned.box_office_mojo_dump
+  description: When revenue is 0, sum domestic + foreign
+  inputs:
+    raw.box_office_mojo_dump:
+      rows:
+        - title: Movie A
+          revenue: 0
+          domestic_rev: 60000000
+          foreign_rev: 40000000
+          loaded_date: 2024-01-15
+          release_year: 2024
+          published_timestamp_utc: 2024-01-15 10:00:00
+  outputs:
+    partial: true
+    query:
+      rows:
+        - title: Movie A
+          revenue: 100000000
+          domestic_rev: 60000000
+          foreign_rev: 40000000
+
+
+test_cleaned_box_office_keeps_revenue_when_nonzero:
+  model: cleaned.box_office_mojo_dump
+  description: When revenue is non-zero, use it directly
+  inputs:
+    raw.box_office_mojo_dump:
+      rows:
+        - title: Movie A
+          revenue: 150000000
+          domestic_rev: 60000000
+          foreign_rev: 40000000
+          loaded_date: 2024-01-15
+          release_year: 2024
+          published_timestamp_utc: 2024-01-15 10:00:00
+  outputs:
+    partial: true
+    query:
+      rows:
+        - title: Movie A
+          revenue: 150000000
