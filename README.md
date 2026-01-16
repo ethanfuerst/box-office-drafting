@@ -12,11 +12,20 @@ Automated box office draft tracking and scoring system that processes draft pick
 
 ## How It Works
 
-1. **Data ingestion** - Loads draft picks, multipliers, and exclusions from Google Sheets.
+1. **Data ingestion** - Loads draft picks, multipliers, and exclusions from Google Sheets via [eftoolkit](https://github.com/ethanfuerst/eftoolkit).
 2. **Box office data** - Reads revenues from S3 (published tables from `box-office-tracking`) or scrapes Box Office Mojo.
-3. **Scoring** - Applies draft rules and multipliers to compute scored revenue.
-4. **Dashboard generation** - Builds standings, scoreboards, and “better pick” analysis.
-5. **Sheet updates** - Writes formatted results back to Google Sheets.
+3. **Scoring** - Applies draft rules and multipliers to compute scored revenue using SQLMesh.
+4. **Dashboard generation** - Builds standings, scoreboards, and "better pick" analysis.
+5. **Sheet updates** - Writes formatted results back to Google Sheets via eftoolkit.
+
+## Dependencies
+
+Core dependencies:
+- **eftoolkit** - Google Sheets and DuckDB utilities (bundles duckdb, gspread, pandas, pyarrow)
+- **sqlmesh** - Data transformation framework
+- **modal** - Serverless deployment and scheduling
+- **pyyaml** - Configuration file parsing
+- **lxml** - HTML parsing for web scraping fallback
 
 ## Installation
 
@@ -94,6 +103,20 @@ uv run modal deploy app.py
 ```
 
 By default, the job is scheduled to run daily at 09:00 UTC. All config files in `src/config/` are automatically discovered and processed.
+
+### Development
+
+Run tests:
+
+```bash
+uv run pytest
+```
+
+Run linting/formatting:
+
+```bash
+uv run pre-commit run --all-files
+```
 
 ## Compatibility with box-office-tracking
 

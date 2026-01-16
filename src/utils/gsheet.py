@@ -3,14 +3,69 @@ import logging
 import os
 from datetime import datetime, timezone
 
+from eftoolkit import load_json_config
 from eftoolkit.gsheets import Spreadsheet
 
 from src import project_root
 from src.utils.config import ConfigDict
-from src.utils.constants import DATETIME_FORMAT
 from src.utils.db_connection import get_duckdb
-from src.utils.format import load_format_config
 from src.utils.query import table_to_df
+
+DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+
+
+def calculate_picks_table_layout(
+    scoreboard_length: int,
+    released_movies_length: int,
+    worst_picks_length: int,
+    best_picks_length: int,
+) -> dict:
+    """
+    Calculate the layout for picks tables based on available space.
+
+    Args:
+        scoreboard_length: Number of rows in scoreboard (not including header)
+        released_movies_length: Number of rows in released movies (not including header)
+        worst_picks_length: Number of rows in worst picks data (not including header)
+        best_picks_length: Number of rows in best picks data (not including header)
+
+    Returns:
+        dict with layout information including row numbers and heights
+    """
+    available_height = released_movies_length - scoreboard_length - 3
+    picks_row_num = 5 + scoreboard_length + 2
+    add_both_picks_tables = False
+    best_picks_row_num = None
+    worst_picks_height = 0
+    best_picks_height = 0
+
+    min_rows_per_table = 2
+    separator_rows = 2
+    total_required = min_rows_per_table * 2 + separator_rows
+
+    if (
+        available_height >= total_required
+        and worst_picks_length > 1
+        and best_picks_length > 1
+    ):
+        add_both_picks_tables = True
+        usable_height = available_height - 2 - separator_rows
+        height_per_table = usable_height // 2
+        worst_picks_height = min(height_per_table, worst_picks_length)
+        best_picks_row_num = picks_row_num + 1 + worst_picks_height + separator_rows
+        best_picks_height = min(usable_height - worst_picks_height, best_picks_length)
+    else:
+        if available_height > 0 and worst_picks_length > 1:
+            worst_picks_height = min(available_height, worst_picks_length)
+
+    return {
+        'available_height': available_height,
+        'add_both_picks_tables': add_both_picks_tables,
+        'worst_picks_row_num': picks_row_num,
+        'worst_picks_height': worst_picks_height,
+        'best_picks_row_num': best_picks_row_num,
+        'best_picks_height': best_picks_height,
+    }
 
 
 class GoogleSheetDashboard:
@@ -57,7 +112,6 @@ class GoogleSheetDashboard:
             ],
         )
 
-        # Always load both dataframes
         self.worst_picks_df = table_to_df(
             config_dict,
             'dashboards.worst_picks',
@@ -88,21 +142,22 @@ class GoogleSheetDashboard:
             (
                 self.scoreboard_df,
                 'B4',
-                load_format_config(
-                    project_root / 'src' / 'assets' / 'scoreboard_format.json'
+                load_json_config(
+                    project_root / 'src' / 'assets' / 'scoreboard_format.json',
+                    strip_comment_keys=True,
                 ),
             ),
             (
                 self.released_movies_df,
                 'I4',
-                load_format_config(
-                    project_root / 'src' / 'assets' / 'released_movies_format.json'
+                load_json_config(
+                    project_root / 'src' / 'assets' / 'released_movies_format.json',
+                    strip_comment_keys=True,
                 ),
             ),
         ]
 
-        # Calculate layout for picks tables
-        layout = self.calculate_picks_table_layout(
+        layout = calculate_picks_table_layout(
             scoreboard_length=len(self.scoreboard_df),
             released_movies_length=len(self.released_movies_df),
             worst_picks_length=len(self.worst_picks_df),
@@ -118,11 +173,9 @@ class GoogleSheetDashboard:
         )
 
         if layout['add_both_picks_tables']:
-            # We have space for both tables
             self.worst_picks_df = self.worst_picks_df.head(layout['worst_picks_height'])
             self.best_picks_df = self.best_picks_df.head(layout['best_picks_height'])
 
-            # Add worst picks table
             self.dashboard_elements.append(
                 (
                     self.worst_picks_df,
@@ -131,14 +184,14 @@ class GoogleSheetDashboard:
                         key.replace('12', str(self.picks_row_num)).replace(
                             '13', str(self.picks_row_num + 1)
                         ): value
-                        for key, value in load_format_config(
-                            project_root / 'src' / 'assets' / 'worst_picks_format.json'
+                        for key, value in load_json_config(
+                            project_root / 'src' / 'assets' / 'worst_picks_format.json',
+                            strip_comment_keys=True,
                         ).items()
                     },
                 )
             )
 
-            # Add best picks table
             self.dashboard_elements.append(
                 (
                     self.best_picks_df,
@@ -147,8 +200,9 @@ class GoogleSheetDashboard:
                         key.replace('12', str(self.best_picks_row_num)).replace(
                             '13', str(self.best_picks_row_num + 1)
                         ): value
-                        for key, value in load_format_config(
-                            project_root / 'src' / 'assets' / 'worst_picks_format.json'
+                        for key, value in load_json_config(
+                            project_root / 'src' / 'assets' / 'worst_picks_format.json',
+                            strip_comment_keys=True,
                         ).items()
                     },
                 )
@@ -159,7 +213,6 @@ class GoogleSheetDashboard:
                 f"and best_picks ({layout['best_picks_height']} rows)"
             )
         elif self.add_picks_table:
-            # Not enough space for both, fall back to worst picks only
             self.worst_picks_df = self.worst_picks_df.head(layout['worst_picks_height'])
 
             self.dashboard_elements.append(
@@ -170,98 +223,15 @@ class GoogleSheetDashboard:
                         key.replace('12', str(self.picks_row_num)).replace(
                             '13', str(self.picks_row_num + 1)
                         ): value
-                        for key, value in load_format_config(
-                            project_root / 'src' / 'assets' / 'worst_picks_format.json'
+                        for key, value in load_json_config(
+                            project_root / 'src' / 'assets' / 'worst_picks_format.json',
+                            strip_comment_keys=True,
                         ).items()
                     },
                 )
             )
 
         self.setup_worksheet()
-
-    @staticmethod
-    def calculate_picks_table_layout(
-        scoreboard_length: int,
-        released_movies_length: int,
-        worst_picks_length: int,
-        best_picks_length: int,
-    ) -> dict:
-        """
-        Calculate the layout for picks tables based on available space.
-
-        Args:
-            scoreboard_length: Number of rows in scoreboard (not including header)
-            released_movies_length: Number of rows in released movies (not including header)
-            worst_picks_length: Number of rows in worst picks data (not including header)
-            best_picks_length: Number of rows in best picks data (not including header)
-
-        Returns:
-            dict with layout information including row numbers and heights
-        """
-        # Calculate available space for picks tables
-        # Formula: released_movies_height - scoreboard_height - 3 (for blank rows/spacing)
-        available_height = released_movies_length - scoreboard_length - 3
-
-        # First picks table starts at: 5 (title rows) + scoreboard_height + 2 (blank + title)
-        picks_row_num = 5 + scoreboard_length + 2
-
-        # Track whether we're showing both tables
-        add_both_picks_tables = False
-        best_picks_row_num = None
-        worst_picks_height = 0
-        best_picks_height = 0
-
-        # Always try to show both tables
-        # Calculate space needed for both tables
-        # Each table needs: 1 (title row) + 1 (header row) + data rows
-        # Plus: 2 (blank row separator between tables)
-        min_rows_per_table = 2  # title + header (minimum to show anything useful)
-        separator_rows = 2  # blank row between tables
-
-        # Check if we have enough space for both tables
-        total_required = min_rows_per_table * 2 + separator_rows
-
-        if (
-            available_height >= total_required
-            and worst_picks_length > 1
-            and best_picks_length > 1
-        ):
-            # We have space for both tables
-            add_both_picks_tables = True
-
-            # Split available height between the two tables
-            # Total consumption per table: 1 (title) + 1 (header) + N (data rows)
-            # Available space for both tables' content (header + data rows)
-            usable_height = (
-                available_height - 2 - separator_rows
-            )  # subtract title rows and separator
-
-            # Split evenly for data rows (each table gets header + data)
-            height_per_table = usable_height // 2
-
-            # Worst picks comes first
-            worst_picks_height = min(height_per_table, worst_picks_length)
-
-            # Best picks comes second, after worst picks + separator
-            # best_picks_row_num = picks_row_num + 1 (title) + worst_picks_height + separator_rows
-            best_picks_row_num = picks_row_num + 1 + worst_picks_height + separator_rows
-
-            # Calculate remaining height for best picks
-            # Remaining space = usable_height - worst_picks_height
-            best_picks_height = min(usable_height - worst_picks_height, best_picks_length)
-        else:
-            # Not enough space for both, fall back to worst picks only
-            if available_height > 0 and worst_picks_length > 1:
-                worst_picks_height = min(available_height, worst_picks_length)
-
-        return {
-            'available_height': available_height,
-            'add_both_picks_tables': add_both_picks_tables,
-            'worst_picks_row_num': picks_row_num,
-            'worst_picks_height': worst_picks_height,
-            'best_picks_row_num': best_picks_row_num,
-            'best_picks_height': best_picks_height,
-        }
 
     def setup_worksheet(self) -> None:
         """Create and configure the Google Sheet worksheet."""
@@ -275,21 +245,24 @@ class GoogleSheetDashboard:
                 f'{gspread_credentials_key} is not set or is invalid in the .env file.'
             )
 
-        # 3 rows for title, 1 row for column titles, 1 row for footer
         self.sheet_height = len(self.released_movies_df) + 5
 
         with Spreadsheet(
             credentials=credentials_dict, spreadsheet_name=self.sheet_name
         ) as ss:
-            # Delete existing worksheet if it exists
-            ss.delete_worksheet('Dashboard', ignore_missing=True)
+            existing_worksheets = ss.get_worksheet_names()
+            if 'Manual Adds' not in existing_worksheets:
+                ss.create_worksheet('Manual Adds', rows=100, cols=10)
+            if 'Multipliers and Exclusions' not in existing_worksheets:
+                ss.create_worksheet('Multipliers and Exclusions', rows=100, cols=10)
+            if 'Dashboard' in existing_worksheets:
+                ss.delete_worksheet('Dashboard')
+            ss.create_worksheet('Dashboard', rows=self.sheet_height, cols=25)
 
-            # Create new worksheet
-            ss.create_worksheet(
-                'Dashboard', rows=self.sheet_height, cols=25, replace=True
+            ss.reorder_worksheets(
+                ['Dashboard', 'Draft', 'Manual Adds', 'Multipliers and Exclusions']
             )
 
-        # Store credentials for later use in other functions
         self._credentials_dict = credentials_dict
 
 
@@ -329,11 +302,9 @@ def update_dashboard(
                 """
             ).fetchnumpy()['published_timestamp_utc'][0]
 
-        # Convert numpy.datetime64 to Python datetime
         dt = published_timestamp_of_most_recent_data.item()
         log_string += f'\nData Updated Through\n{dt.strftime(DATETIME_FORMAT)} UTC'
 
-        # Adding last updated header
         ws.write_values('G2', [[log_string]])
         ws.format_range(
             'G2',
@@ -342,7 +313,6 @@ def update_dashboard(
             },
         )
 
-        # Columns are created with 12 point font, then auto resized and reduced to 10 point bold font
         ws.auto_resize_columns(1, 7)
         ws.auto_resize_columns(8, 23)
 
@@ -359,7 +329,6 @@ def update_dashboard(
 
         if gsheet_dashboard.add_picks_table:
             if gsheet_dashboard.add_both_picks_tables:
-                # Format worst picks header
                 ws.format_range(
                     f'B{gsheet_dashboard.picks_row_num}:G{gsheet_dashboard.picks_row_num}',
                     {
@@ -370,7 +339,6 @@ def update_dashboard(
                         },
                     },
                 )
-                # Format best picks header
                 ws.format_range(
                     f'B{gsheet_dashboard.best_picks_row_num}:G{gsheet_dashboard.best_picks_row_num}',
                     {
@@ -382,7 +350,6 @@ def update_dashboard(
                     },
                 )
             else:
-                # Single table
                 ws.format_range(
                     f'B{gsheet_dashboard.picks_row_num}:G{gsheet_dashboard.picks_row_num}',
                     {
@@ -405,8 +372,6 @@ def update_dashboard(
             },
         )
 
-        # Check for $0 values and clear them
-        # Read entire sheet and extract column V (index 21, 0-based)
         all_data = ws.read()
         if not all_data.empty and 'V' in all_data.columns:
             v_col_idx = list(all_data.columns).index('V')
@@ -415,12 +380,10 @@ def update_dashboard(
                 if cell_value == '$0':
                     ws.write_values(f'V{i + 1}', [['']])
 
-        # resizing spacer columns
         spacer_columns = ['A', 'H', 'Y']
         for column in spacer_columns:
             ws.set_column_width(column, 25)
 
-        # for some reason the auto resize still cuts off some of the title
         title_columns = ['J', 'U']
 
         if gsheet_dashboard.add_picks_table:
@@ -429,12 +392,10 @@ def update_dashboard(
         for column in title_columns:
             ws.set_column_width(column, 284)
 
-        # revenue columns will also get cut off
         revenue_columns = ['L', 'M', 'R', 'S']
         for column in revenue_columns:
             ws.set_column_width(column, 120)
 
-        # gets resized wrong and have to do it manually
         ws.set_column_width('G', 164)
         ws.set_column_width('R', 142)
         ws.set_column_width('W', 104)
@@ -467,7 +428,6 @@ def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
 
         if gsheet_dashboard.add_picks_table:
             if gsheet_dashboard.add_both_picks_tables:
-                # Add worst picks title
                 worst_picks_title_row_num = gsheet_dashboard.picks_row_num - 1
                 ws.write_values(
                     f'B{worst_picks_title_row_num}',
@@ -481,7 +441,6 @@ def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
                     f'B{worst_picks_title_row_num}:G{worst_picks_title_row_num}'
                 )
 
-                # Add best picks title
                 best_picks_title_row_num = gsheet_dashboard.best_picks_row_num - 1
                 ws.write_values(
                     f'B{best_picks_title_row_num}',
@@ -495,7 +454,6 @@ def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
                     f'B{best_picks_title_row_num}:G{best_picks_title_row_num}'
                 )
             else:
-                # Single table (worst picks only)
                 picks_title_row_num = gsheet_dashboard.picks_row_num - 1
                 ws.write_values(
                     f'B{picks_title_row_num}',
@@ -517,9 +475,6 @@ def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None
         spreadsheet_name=gsheet_dashboard.sheet_name,
     ) as ss:
         ws = ss.worksheet('Dashboard')
-
-        # Conditional format rule for "Still In Theaters" = "Yes"
-        # Use explicit end row since eftoolkit doesn't handle open-ended ranges
         end_row = gsheet_dashboard.sheet_height
         ws.add_conditional_format(
             f'X5:X{end_row}',
@@ -535,8 +490,9 @@ def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None
 
 def add_comments_to_dashboard(gsheet_dashboard: GoogleSheetDashboard) -> None:
     """Add comments to the dashboard."""
-    notes_dict = load_format_config(
-        project_root / 'src' / 'assets' / 'dashboard_notes.json'
+    notes_dict = load_json_config(
+        project_root / 'src' / 'assets' / 'dashboard_notes.json',
+        strip_comment_keys=True,
     )
 
     with Spreadsheet(
@@ -627,15 +583,3 @@ def log_min_revenue_info(
         logging.info(
             'All movies are above the minimum revenue of the most recent data pull.'
         )
-
-
-def load_dashboard_data(config_dict: ConfigDict) -> None:
-    """Load configuration and update the Google Sheet dashboard."""
-    gsheet_dashboard = GoogleSheetDashboard(config_dict)
-
-    update_dashboard(gsheet_dashboard, config_dict)
-    update_titles(gsheet_dashboard)
-    apply_conditional_formatting(gsheet_dashboard)
-    add_comments_to_dashboard(gsheet_dashboard)
-    log_missing_movies(gsheet_dashboard)
-    log_min_revenue_info(gsheet_dashboard, config_dict)

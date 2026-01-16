@@ -4,7 +4,6 @@ from eftoolkit.sql import DuckDB
 
 from src import project_root
 from src.utils.config import ConfigDict
-from src.utils.constants import get_s3_endpoint, get_s3_region
 
 
 def get_duckdb(config_dict: ConfigDict) -> DuckDB:
@@ -43,6 +42,6 @@ def get_duckdb(config_dict: ConfigDict) -> DuckDB:
         database=str(database_path),
         s3_access_key_id=s3_access_key_id,
         s3_secret_access_key=s3_secret_access_key,
-        s3_region=get_s3_region(),
-        s3_endpoint=get_s3_endpoint(),
+        s3_region=os.getenv('S3_REGION'),
+        s3_endpoint=os.getenv('S3_ENDPOINT'),
     )

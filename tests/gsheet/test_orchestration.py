@@ -7,25 +7,19 @@ def test_load_dashboard_data_orchestrates_dashboard_creation():
     """load_dashboard_data orchestrates all dashboard functions."""
     config = make_config_dict(update_type='s3')
 
-    with patch('src.utils.gsheet.GoogleSheetDashboard') as MockDashboard:
+    with patch('src.etl.GoogleSheetDashboard') as MockDashboard:
         mock_dashboard = MagicMock()
         MockDashboard.return_value = mock_dashboard
 
-        with patch('src.utils.gsheet.update_dashboard') as mock_update:
-            with patch('src.utils.gsheet.update_titles') as mock_titles:
-                with patch(
-                    'src.utils.gsheet.apply_conditional_formatting'
-                ) as mock_format:
-                    with patch(
-                        'src.utils.gsheet.add_comments_to_dashboard'
-                    ) as mock_comments:
-                        with patch(
-                            'src.utils.gsheet.log_missing_movies'
-                        ) as mock_log_missing:
+        with patch('src.etl.update_dashboard') as mock_update:
+            with patch('src.etl.update_titles') as mock_titles:
+                with patch('src.etl.apply_conditional_formatting') as mock_format:
+                    with patch('src.etl.add_comments_to_dashboard') as mock_comments:
+                        with patch('src.etl.log_missing_movies') as mock_log_missing:
                             with patch(
-                                'src.utils.gsheet.log_min_revenue_info'
+                                'src.etl.log_min_revenue_info'
                             ) as mock_log_revenue:
-                                from src.utils.gsheet import load_dashboard_data
+                                from src.etl import load_dashboard_data
 
                                 load_dashboard_data(config)
 

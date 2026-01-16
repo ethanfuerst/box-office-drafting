@@ -1,11 +1,11 @@
+import json
+import os
 import typing as t
 from datetime import datetime
 
 import pandas as pd
-from pandas import DataFrame
+from eftoolkit.gsheets import Spreadsheet
 from sqlmesh import ExecutionContext, model
-
-from utils.gspread_utils import get_worksheet
 
 
 @model(
@@ -38,16 +38,17 @@ def execute(
     if not sheet_name:
         raise ValueError('sheet_name must be set in SQLMesh variables')
 
-    worksheet = get_worksheet(sheet_name, 'Manual Adds', credentials_name)
+    credentials_json = os.getenv(credentials_name)
+    credentials_dict = json.loads(credentials_json.replace('\n', '\\n'))
 
-    raw = worksheet.get_all_values()
+    with Spreadsheet(credentials=credentials_dict, spreadsheet_name=sheet_name) as ss:
+        df = ss.worksheet('Manual Adds').read()
 
-    # Handle empty worksheet
-    if len(raw) <= 1:
+    if df.empty:
         yield from ()
         return
 
-    df = DataFrame(data=raw[1:], columns=raw[0]).astype(str)
+    df = df.astype(str)
     df['release_date'] = pd.to_datetime(df['release_date'], format='%m/%d/%Y')
 
     yield df
