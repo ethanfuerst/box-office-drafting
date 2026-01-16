@@ -3,22 +3,14 @@ import logging
 import os
 from datetime import datetime, timezone
 
-import gspread_formatting as gsf
-from dotenv import load_dotenv
-from gspread import service_account_from_dict
+from eftoolkit.gsheets import Spreadsheet
 
 from src import project_root
 from src.utils.config import ConfigDict
 from src.utils.constants import DATETIME_FORMAT
 from src.utils.db_connection import get_duckdb
 from src.utils.format import load_format_config
-from src.utils.gspread_format import df_to_sheet
-from src.utils.logging_config import setup_logging
 from src.utils.query import table_to_df
-
-setup_logging()
-
-load_dotenv()
 
 
 class GoogleSheetDashboard:
@@ -278,247 +270,265 @@ class GoogleSheetDashboard:
 
         if gspread_credentials is not None:
             credentials_dict = json.loads(gspread_credentials.replace('\n', '\\n'))
-            gc = service_account_from_dict(credentials_dict)
         else:
             raise ValueError(
                 f'{gspread_credentials_key} is not set or is invalid in the .env file.'
             )
 
-        sh = gc.open(self.sheet_name)
-
-        worksheet_title = 'Dashboard'
-        worksheet = sh.worksheet(worksheet_title)
-
-        sh.del_worksheet(worksheet)
         # 3 rows for title, 1 row for column titles, 1 row for footer
         self.sheet_height = len(self.released_movies_df) + 5
-        worksheet = sh.add_worksheet(
-            title=worksheet_title, rows=self.sheet_height, cols=25, index=1
-        )
-        self.worksheet = sh.worksheet(worksheet_title)
+
+        with Spreadsheet(
+            credentials=credentials_dict, spreadsheet_name=self.sheet_name
+        ) as ss:
+            # Delete existing worksheet if it exists
+            ss.delete_worksheet('Dashboard', ignore_missing=True)
+
+            # Create new worksheet
+            ss.create_worksheet(
+                'Dashboard', rows=self.sheet_height, cols=25, replace=True
+            )
+
+        # Store credentials for later use in other functions
+        self._credentials_dict = credentials_dict
 
 
 def update_dashboard(
     gsheet_dashboard: GoogleSheetDashboard, config_dict: ConfigDict
 ) -> None:
     """Update the Google Sheet with dashboard data and metadata."""
-    for element in gsheet_dashboard.dashboard_elements:
-        df_to_sheet(
-            df=element[0],
-            worksheet=gsheet_dashboard.worksheet,
-            location=element[1],
-            format_dict=element[2] if len(element) > 2 else None,
+    with Spreadsheet(
+        credentials=gsheet_dashboard._credentials_dict,
+        spreadsheet_name=gsheet_dashboard.sheet_name,
+    ) as ss:
+        ws = ss.worksheet('Dashboard')
+
+        for element in gsheet_dashboard.dashboard_elements:
+            ws.write_dataframe(
+                df=element[0],
+                location=element[1],
+                format_dict=element[2] if len(element) > 2 else None,
+            )
+
+        dashboard_done_updating = (
+            gsheet_dashboard.released_movies_df['Still In Theaters'].eq('No').all()
+            and len(gsheet_dashboard.released_movies_df) > 0
+            and gsheet_dashboard.year < datetime.now(timezone.utc).year
         )
 
-    dashboard_done_updating = (
-        gsheet_dashboard.released_movies_df['Still In Theaters'].eq('No').all()
-        and len(gsheet_dashboard.released_movies_df) > 0
-        and gsheet_dashboard.year < datetime.now(timezone.utc).year
-    )
+        log_string = f'Dashboard Last Updated\n{datetime.now(timezone.utc).strftime(DATETIME_FORMAT)} UTC'
 
-    log_string = f'Dashboard Last Updated\n{datetime.now(timezone.utc).strftime(DATETIME_FORMAT)} UTC'
+        if dashboard_done_updating:
+            log_string += '\nDashboard is done updating\nand can be removed from the etl'
 
-    if dashboard_done_updating:
-        log_string += '\nDashboard is done updating\nand can be removed from the etl'
+        with get_duckdb(config_dict) as db:
+            published_timestamp_of_most_recent_data = db.connection.query(
+                """
+                    select max(published_timestamp_utc) as published_timestamp_utc
+                    from cleaned.box_office_mojo_dump
+                """
+            ).fetchnumpy()['published_timestamp_utc'][0]
 
-    with get_duckdb(config_dict) as db:
-        published_timestamp_of_most_recent_data = db.connection.query(
-            """
-                select max(published_timestamp_utc) as published_timestamp_utc
-                from cleaned.box_office_mojo_dump
-            """
-        ).fetchnumpy()['published_timestamp_utc'][0]
+        # Convert numpy.datetime64 to Python datetime
+        dt = published_timestamp_of_most_recent_data.item()
+        log_string += f'\nData Updated Through\n{dt.strftime(DATETIME_FORMAT)} UTC'
 
-    # Convert numpy.datetime64 to Python datetime
-    dt = published_timestamp_of_most_recent_data.item()
-    log_string += f'\nData Updated Through\n{dt.strftime(DATETIME_FORMAT)} UTC'
-
-    # Adding last updated header
-    gsheet_dashboard.worksheet.update(
-        values=[[log_string]],
-        range_name='G2',
-    )
-
-    gsheet_dashboard.worksheet.format(
-        'G2',
-        {
-            'horizontalAlignment': 'CENTER',
-        },
-    )
-
-    # Columns are created with 12 point font, then auto resized and reduced to 10 point bold font
-    gsheet_dashboard.worksheet.columns_auto_resize(1, 7)
-    gsheet_dashboard.worksheet.columns_auto_resize(8, 23)
-
-    gsheet_dashboard.worksheet.format(
-        'B4:G4',
-        {
-            'horizontalAlignment': 'CENTER',
-            'textFormat': {
-                'fontSize': 10,
-                'bold': True,
+        # Adding last updated header
+        ws.write_values('G2', [[log_string]])
+        ws.format_range(
+            'G2',
+            {
+                'horizontalAlignment': 'CENTER',
             },
-        },
-    )
+        )
 
-    if gsheet_dashboard.add_picks_table:
-        if gsheet_dashboard.add_both_picks_tables:
-            # Format worst picks header
-            gsheet_dashboard.worksheet.format(
-                f'B{gsheet_dashboard.picks_row_num}:G{gsheet_dashboard.picks_row_num}',
-                {
-                    'horizontalAlignment': 'CENTER',
-                    'textFormat': {
-                        'fontSize': 10,
-                        'bold': True,
-                    },
-                },
-            )
-            # Format best picks header
-            gsheet_dashboard.worksheet.format(
-                f'B{gsheet_dashboard.best_picks_row_num}:G{gsheet_dashboard.best_picks_row_num}',
-                {
-                    'horizontalAlignment': 'CENTER',
-                    'textFormat': {
-                        'fontSize': 10,
-                        'bold': True,
-                    },
-                },
-            )
-        else:
-            # Single table
-            gsheet_dashboard.worksheet.format(
-                f'B{gsheet_dashboard.picks_row_num}:G{gsheet_dashboard.picks_row_num}',
-                {
-                    'horizontalAlignment': 'CENTER',
-                    'textFormat': {
-                        'fontSize': 10,
-                        'bold': True,
-                    },
-                },
-            )
+        # Columns are created with 12 point font, then auto resized and reduced to 10 point bold font
+        ws.auto_resize_columns(1, 7)
+        ws.auto_resize_columns(8, 23)
 
-    gsheet_dashboard.worksheet.format(
-        'I4:X4',
-        {
-            'horizontalAlignment': 'CENTER',
-            'textFormat': {
-                'fontSize': 10,
-                'bold': True,
+        ws.format_range(
+            'B4:G4',
+            {
+                'horizontalAlignment': 'CENTER',
+                'textFormat': {
+                    'fontSize': 10,
+                    'bold': True,
+                },
             },
-        },
-    )
+        )
 
-    for i in range(5, gsheet_dashboard.sheet_height):
-        if gsheet_dashboard.worksheet.acell(f'V{i}').value == '$0':
-            gsheet_dashboard.worksheet.update(values=[['']], range_name=f'V{i}')
+        if gsheet_dashboard.add_picks_table:
+            if gsheet_dashboard.add_both_picks_tables:
+                # Format worst picks header
+                ws.format_range(
+                    f'B{gsheet_dashboard.picks_row_num}:G{gsheet_dashboard.picks_row_num}',
+                    {
+                        'horizontalAlignment': 'CENTER',
+                        'textFormat': {
+                            'fontSize': 10,
+                            'bold': True,
+                        },
+                    },
+                )
+                # Format best picks header
+                ws.format_range(
+                    f'B{gsheet_dashboard.best_picks_row_num}:G{gsheet_dashboard.best_picks_row_num}',
+                    {
+                        'horizontalAlignment': 'CENTER',
+                        'textFormat': {
+                            'fontSize': 10,
+                            'bold': True,
+                        },
+                    },
+                )
+            else:
+                # Single table
+                ws.format_range(
+                    f'B{gsheet_dashboard.picks_row_num}:G{gsheet_dashboard.picks_row_num}',
+                    {
+                        'horizontalAlignment': 'CENTER',
+                        'textFormat': {
+                            'fontSize': 10,
+                            'bold': True,
+                        },
+                    },
+                )
 
-    # resizing spacer columns
-    spacer_columns = ['A', 'H', 'Y']
-    for column in spacer_columns:
-        gsf.set_column_width(gsheet_dashboard.worksheet, column, 25)
+        ws.format_range(
+            'I4:X4',
+            {
+                'horizontalAlignment': 'CENTER',
+                'textFormat': {
+                    'fontSize': 10,
+                    'bold': True,
+                },
+            },
+        )
 
-    # for some reason the auto resize still cuts off some of the title
-    title_columns = ['J', 'U']
+        # Check for $0 values and clear them
+        # Read entire sheet and extract column V (index 21, 0-based)
+        all_data = ws.read()
+        if not all_data.empty and 'V' in all_data.columns:
+            v_col_idx = list(all_data.columns).index('V')
+            for i in range(4, len(all_data)):  # Start at row 5 (index 4)
+                cell_value = all_data.iloc[i, v_col_idx] if i < len(all_data) else None
+                if cell_value == '$0':
+                    ws.write_values(f'V{i + 1}', [['']])
 
-    if gsheet_dashboard.add_picks_table:
-        title_columns.append('C')
+        # resizing spacer columns
+        spacer_columns = ['A', 'H', 'Y']
+        for column in spacer_columns:
+            ws.set_column_width(column, 25)
 
-    for column in title_columns:
-        gsf.set_column_width(gsheet_dashboard.worksheet, column, 284)
+        # for some reason the auto resize still cuts off some of the title
+        title_columns = ['J', 'U']
 
-    # revenue columns will also get cut off
-    revenue_columns = ['L', 'M', 'R', 'S']
-    for column in revenue_columns:
-        gsf.set_column_width(gsheet_dashboard.worksheet, column, 120)
+        if gsheet_dashboard.add_picks_table:
+            title_columns.append('C')
 
-    # gets resized wrong and have to do it manually
-    gsf.set_column_width(gsheet_dashboard.worksheet, 'G', 164)
-    gsf.set_column_width(gsheet_dashboard.worksheet, 'R', 142)
-    gsf.set_column_width(gsheet_dashboard.worksheet, 'W', 104)
-    gsf.set_column_width(gsheet_dashboard.worksheet, 'X', 106)
+        for column in title_columns:
+            ws.set_column_width(column, 284)
 
-    if dashboard_done_updating:
-        gsf.set_column_width(gsheet_dashboard.worksheet, 'G', 200)
+        # revenue columns will also get cut off
+        revenue_columns = ['L', 'M', 'R', 'S']
+        for column in revenue_columns:
+            ws.set_column_width(column, 120)
+
+        # gets resized wrong and have to do it manually
+        ws.set_column_width('G', 164)
+        ws.set_column_width('R', 142)
+        ws.set_column_width('W', 104)
+        ws.set_column_width('X', 106)
+
+        if dashboard_done_updating:
+            ws.set_column_width('G', 200)
 
 
 def update_titles(gsheet_dashboard: GoogleSheetDashboard) -> None:
     """Update section titles in the Google Sheet."""
-    gsheet_dashboard.worksheet.update(
-        values=[[gsheet_dashboard.dashboard_name]], range_name='B2'
-    )
-    gsheet_dashboard.worksheet.format(
-        'B2',
-        {'horizontalAlignment': 'CENTER', 'textFormat': {'fontSize': 20, 'bold': True}},
-    )
-    gsheet_dashboard.worksheet.merge_cells('B2:F2')
-    gsheet_dashboard.worksheet.update(values=[['Released Movies']], range_name='I2')
-    gsheet_dashboard.worksheet.format(
-        'I2',
-        {'horizontalAlignment': 'CENTER', 'textFormat': {'fontSize': 20, 'bold': True}},
-    )
-    gsheet_dashboard.worksheet.merge_cells('I2:X2')
+    with Spreadsheet(
+        credentials=gsheet_dashboard._credentials_dict,
+        spreadsheet_name=gsheet_dashboard.sheet_name,
+    ) as ss:
+        ws = ss.worksheet('Dashboard')
 
-    if gsheet_dashboard.add_picks_table:
-        if gsheet_dashboard.add_both_picks_tables:
-            # Add worst picks title
-            worst_picks_title_row_num = gsheet_dashboard.picks_row_num - 1
-            gsheet_dashboard.worksheet.update(
-                values=[['Worst Picks']],
-                range_name=f'B{worst_picks_title_row_num}',
-            )
-            gsheet_dashboard.worksheet.format(
-                f'B{worst_picks_title_row_num}',
-                {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
-            )
-            gsheet_dashboard.worksheet.merge_cells(
-                f'B{worst_picks_title_row_num}:G{worst_picks_title_row_num}'
-            )
+        ws.write_values('B2', [[gsheet_dashboard.dashboard_name]])
+        ws.format_range(
+            'B2',
+            {'horizontalAlignment': 'CENTER', 'textFormat': {'fontSize': 20, 'bold': True}},
+        )
+        ws.merge_cells('B2:F2')
+        ws.write_values('I2', [['Released Movies']])
+        ws.format_range(
+            'I2',
+            {'horizontalAlignment': 'CENTER', 'textFormat': {'fontSize': 20, 'bold': True}},
+        )
+        ws.merge_cells('I2:X2')
 
-            # Add best picks title
-            best_picks_title_row_num = gsheet_dashboard.best_picks_row_num - 1
-            gsheet_dashboard.worksheet.update(
-                values=[['Best Picks']],
-                range_name=f'B{best_picks_title_row_num}',
-            )
-            gsheet_dashboard.worksheet.format(
-                f'B{best_picks_title_row_num}',
-                {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
-            )
-            gsheet_dashboard.worksheet.merge_cells(
-                f'B{best_picks_title_row_num}:G{best_picks_title_row_num}'
-            )
-        else:
-            # Single table (worst picks only)
-            picks_title_row_num = gsheet_dashboard.picks_row_num - 1
-            gsheet_dashboard.worksheet.update(
-                values=[['Worst Picks']],
-                range_name=f'B{picks_title_row_num}',
-            )
-            gsheet_dashboard.worksheet.format(
-                f'B{picks_title_row_num}',
-                {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
-            )
-            gsheet_dashboard.worksheet.merge_cells(
-                f'B{picks_title_row_num}:G{picks_title_row_num}'
-            )
+        if gsheet_dashboard.add_picks_table:
+            if gsheet_dashboard.add_both_picks_tables:
+                # Add worst picks title
+                worst_picks_title_row_num = gsheet_dashboard.picks_row_num - 1
+                ws.write_values(
+                    f'B{worst_picks_title_row_num}',
+                    [['Worst Picks']],
+                )
+                ws.format_range(
+                    f'B{worst_picks_title_row_num}',
+                    {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
+                )
+                ws.merge_cells(
+                    f'B{worst_picks_title_row_num}:G{worst_picks_title_row_num}'
+                )
+
+                # Add best picks title
+                best_picks_title_row_num = gsheet_dashboard.best_picks_row_num - 1
+                ws.write_values(
+                    f'B{best_picks_title_row_num}',
+                    [['Best Picks']],
+                )
+                ws.format_range(
+                    f'B{best_picks_title_row_num}',
+                    {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
+                )
+                ws.merge_cells(
+                    f'B{best_picks_title_row_num}:G{best_picks_title_row_num}'
+                )
+            else:
+                # Single table (worst picks only)
+                picks_title_row_num = gsheet_dashboard.picks_row_num - 1
+                ws.write_values(
+                    f'B{picks_title_row_num}',
+                    [['Worst Picks']],
+                )
+                ws.format_range(
+                    f'B{picks_title_row_num}',
+                    {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}},
+                )
+                ws.merge_cells(
+                    f'B{picks_title_row_num}:G{picks_title_row_num}'
+                )
 
 
 def apply_conditional_formatting(gsheet_dashboard: GoogleSheetDashboard) -> None:
     """Apply conditional formatting rules to the Google Sheet."""
-    still_in_theater_rule = gsf.ConditionalFormatRule(
-        ranges=[gsf.GridRange.from_a1_range('X5:X', gsheet_dashboard.worksheet)],
-        booleanRule=gsf.BooleanRule(
-            condition=gsf.BooleanCondition('TEXT_EQ', ['Yes']),
-            format=gsf.CellFormat(
-                backgroundColor=gsf.Color(0, 0.9, 0),
-            ),
-        ),
-    )
+    with Spreadsheet(
+        credentials=gsheet_dashboard._credentials_dict,
+        spreadsheet_name=gsheet_dashboard.sheet_name,
+    ) as ss:
+        ws = ss.worksheet('Dashboard')
 
-    rules = gsf.get_conditional_format_rules(gsheet_dashboard.worksheet)
-    rules.append(still_in_theater_rule)
-    rules.save()
+        # Conditional format rule for "Still In Theaters" = "Yes"
+        # Use explicit end row since eftoolkit doesn't handle open-ended ranges
+        end_row = gsheet_dashboard.sheet_height
+        ws.add_conditional_format(
+            f'X5:X{end_row}',
+            {
+                'type': 'TEXT_EQ',
+                'values': ['Yes'],
+                'format': {'backgroundColor': {'red': 0, 'green': 0.9, 'blue': 0}},
+            },
+        )
 
     logging.info('Dashboard updated and formatted')
 
@@ -529,8 +539,12 @@ def add_comments_to_dashboard(gsheet_dashboard: GoogleSheetDashboard) -> None:
         project_root / 'src' / 'assets' / 'dashboard_notes.json'
     )
 
-    worksheet = gsheet_dashboard.worksheet
-    worksheet.insert_notes(notes_dict)
+    with Spreadsheet(
+        credentials=gsheet_dashboard._credentials_dict,
+        spreadsheet_name=gsheet_dashboard.sheet_name,
+    ) as ss:
+        ws = ss.worksheet('Dashboard')
+        ws.set_notes(notes_dict)
 
 
 def log_missing_movies(gsheet_dashboard: GoogleSheetDashboard) -> None:

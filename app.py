@@ -1,8 +1,13 @@
 import modal
+from dotenv import load_dotenv
+from eftoolkit import setup_logging
 
 from src import project_root
 from src.etl import google_sheet_sync
 from src.utils.config import get_config_dict
+
+load_dotenv()
+setup_logging()
 
 app = modal.App('box-office-drafting')
 

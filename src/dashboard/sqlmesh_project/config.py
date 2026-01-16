@@ -10,7 +10,7 @@ from sqlmesh.core.config import (
 
 from src import project_root
 from src.utils.config import ConfigDict, get_config_dict
-from src.utils.constants import S3_ENDPOINT, S3_REGION
+from src.utils.constants import get_s3_endpoint, get_s3_region
 
 
 def get_sqlmesh_config(config_path: Path | str) -> Config:
@@ -29,8 +29,8 @@ def get_sqlmesh_config(config_path: Path | str) -> Config:
         secrets = [
             {
                 'type': 's3',
-                'region': S3_REGION,
-                'endpoint': S3_ENDPOINT,
+                'region': get_s3_region(),
+                'endpoint': get_s3_endpoint(),
                 'key_id': key_id,
                 'secret': secret,
             },
