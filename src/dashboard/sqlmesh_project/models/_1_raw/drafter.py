@@ -1,11 +1,11 @@
+import json
+import os
 import typing as t
 from datetime import datetime
 
 import pandas as pd
-from pandas import DataFrame
+from eftoolkit.gsheets import Spreadsheet
 from sqlmesh import ExecutionContext, model
-
-from utils.gspread_utils import get_worksheet
 
 
 @model(
@@ -36,9 +36,10 @@ def execute(
     if not sheet_name:
         raise ValueError('sheet_name must be set in SQLMesh variables')
 
-    worksheet = get_worksheet(sheet_name, 'Draft', credentials_name)
+    credentials_json = os.getenv(credentials_name)
+    credentials_dict = json.loads(credentials_json.replace('\n', '\\n'))
 
-    raw = worksheet.get_all_values()
-    df = DataFrame(data=raw[1:], columns=raw[0]).astype(str)
+    with Spreadsheet(credentials=credentials_dict, spreadsheet_name=sheet_name) as ss:
+        df = ss.worksheet('Draft').read()
 
-    return df
+    return df.astype(str)

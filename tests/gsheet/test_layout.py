@@ -1,6 +1,6 @@
 import pytest
 
-from src.utils.gsheet import GoogleSheetDashboard
+from src.utils.gsheet import calculate_picks_table_layout
 
 
 @pytest.mark.parametrize(
@@ -49,7 +49,7 @@ def test_layout_calculation(
     expected_best_height,
 ):
     """Layout calculation handles various input combinations."""
-    result = GoogleSheetDashboard.calculate_picks_table_layout(
+    result = calculate_picks_table_layout(
         scoreboard_length=scoreboard_length,
         released_movies_length=released_movies_length,
         worst_picks_length=worst_picks_length,

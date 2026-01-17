@@ -1,74 +1,7 @@
 import pytest
-import yaml
 
-from src.utils.config import get_config_dict, read_config, validate_config
+from src.utils.config import get_config_dict, validate_config
 from tests.conftest import make_config_dict
-
-
-def test_read_config_reads_valid_yaml_file(tmp_path):
-    """Valid YAML file is parsed into a dictionary."""
-    config_content = """
-year: 2025
-name: Test Draft
-sheet_name: Test Sheet
-draft_id: test_draft
-update_type: web
-gspread_credentials_name: TEST_CREDS
-"""
-    config_file = tmp_path / 'config.yml'
-    config_file.write_text(config_content)
-
-    result = read_config(config_file)
-
-    assert result['year'] == 2025
-    assert result['name'] == 'Test Draft'
-    assert result['draft_id'] == 'test_draft'
-
-
-def test_read_config_accepts_string_path(tmp_path):
-    """Function accepts string path argument."""
-    config_content = 'key: value'
-    config_file = tmp_path / 'string_path.yml'
-    config_file.write_text(config_content)
-
-    result = read_config(str(config_file))
-
-    assert result == {'key': 'value'}
-
-
-def test_read_config_raises_file_not_found(tmp_path):
-    """FileNotFoundError is raised for missing file."""
-    missing_file = tmp_path / 'missing.yml'
-
-    with pytest.raises(FileNotFoundError):
-        read_config(missing_file)
-
-
-def test_read_config_raises_value_error_on_empty_file(tmp_path):
-    """ValueError is raised for empty config file."""
-    empty_file = tmp_path / 'empty.yml'
-    empty_file.write_text('')
-
-    with pytest.raises(ValueError, match='empty or invalid'):
-        read_config(empty_file)
-
-
-def test_read_config_raises_value_error_on_yaml_null(tmp_path):
-    """ValueError is raised when YAML parses to None."""
-    null_file = tmp_path / 'null.yml'
-    null_file.write_text('---\n')
-
-    with pytest.raises(ValueError, match='empty or invalid'):
-        read_config(null_file)
-
-
-def test_read_config_raises_yaml_error_on_invalid_yaml(tmp_path):
-    """YAMLError is raised for invalid YAML syntax."""
-    invalid_file = tmp_path / 'invalid.yml'
-    invalid_file.write_text('key: [unclosed bracket')
-
-    with pytest.raises(yaml.YAMLError):
-        read_config(invalid_file)
 
 
 def test_validate_config_validates_complete_web_config(current_year):

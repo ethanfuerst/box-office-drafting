@@ -44,31 +44,6 @@ class ConfigDict(TypedDict):
     s3_secret_access_key_var_name: NotRequired[str]
     bucket: NotRequired[str]
 
-
-def read_config(config_path: Path | str) -> dict:
-    """Load and parse a YAML configuration file.
-
-    Args:
-        config_path: Path to the YAML configuration file.
-
-    Returns:
-        dict: Parsed configuration dictionary.
-
-    Raises:
-        FileNotFoundError: If the config file doesn't exist.
-        ValueError: If the configuration file is empty or invalid.
-        yaml.YAMLError: If YAML parsing fails.
-    """
-    config_path_obj = Path(config_path)
-    with config_path_obj.open('r') as yaml_in:
-        yaml_object = yaml.safe_load(yaml_in)
-
-    if yaml_object is None:
-        raise ValueError(f'Configuration file {config_path_obj} is empty or invalid')
-
-    return yaml_object
-
-
 def validate_config(config: ConfigDict) -> ConfigDict:
     """
     Validate configuration dictionary and return typed ConfigDict.

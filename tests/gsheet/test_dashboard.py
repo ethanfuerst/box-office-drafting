@@ -281,7 +281,7 @@ def test_add_comments_to_dashboard_inserts_notes_from_config():
         MockSpreadsheet.return_value.__enter__.return_value = mock_spreadsheet
         MockSpreadsheet.return_value.__exit__.return_value = None
 
-        with patch('src.utils.gsheet.load_format_config', return_value=notes_dict):
+        with patch('src.utils.gsheet.load_json_config', return_value=notes_dict):
             from src.utils.gsheet import add_comments_to_dashboard
 
             add_comments_to_dashboard(mock_gsheet_dashboard)
