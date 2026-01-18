@@ -496,22 +496,14 @@ def test_apply_best_picks_title_writes_title():
 
 
 def test_apply_scoreboard_header_formats_header_row():
-    """Scoreboard header row is formatted based on asset location and columns."""
+    """Scoreboard header row is formatted at B4:G4."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
-    from src.sheets.tabs.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import HEADER_FORMAT, DashboardWorksheet
 
     mock_ws = MagicMock()
-    # Scoreboard has 6 columns (B through G)
     mock_asset = WorksheetAsset(
-        df=pd.DataFrame({
-            'Name': ['Player 1'],
-            'Scored Revenue': [1000000],
-            '# Released': [5],
-            '# Optimal Picks': [3],
-            '% Optimal Picks': [0.6],
-            'Unadjusted Revenue': [900000],
-        }),
+        df=pd.DataFrame({'col': [1]}),
         location=CellLocation(cell='B4'),
     )
     ctx = HookContext(
@@ -524,39 +516,18 @@ def test_apply_scoreboard_header_formats_header_row():
     worksheet = DashboardWorksheet()
     worksheet._apply_scoreboard_header(ctx)
 
-    format_calls = mock_ws.format_range.call_args_list
-    ranges = [c[0][0].value for c in format_calls]
-
-    assert 'B4:G4' in ranges
+    mock_ws.format_range.assert_called_once_with('B4:G4', HEADER_FORMAT)
 
 
 def test_apply_released_movies_header_formats_header_row():
-    """Released movies header row is formatted based on asset location and columns."""
+    """Released movies header row is formatted at I4:X4."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
-    from src.sheets.tabs.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import HEADER_FORMAT, DashboardWorksheet
 
     mock_ws = MagicMock()
-    # Released movies has 16 columns (I through X)
     mock_asset = WorksheetAsset(
-        df=pd.DataFrame({
-            'Rank': [1],
-            'Title': ['Movie'],
-            'Drafted By': ['Player'],
-            'Revenue': [1000000],
-            'Scored Revenue': [1000000],
-            'Round Drafted': [1],
-            'Overall Pick': [1],
-            'Multiplier': [1.0],
-            'Domestic Revenue': [500000],
-            'Domestic Revenue %': [0.5],
-            'Foreign Revenue': [500000],
-            'Foreign Revenue %': [0.5],
-            'Better Pick': [''],
-            'Better Pick Scored Revenue': [0],
-            'First Seen Date': ['2025-01-01'],
-            'Still In Theaters': ['Yes'],
-        }),
+        df=pd.DataFrame({'col': [1]}),
         location=CellLocation(cell='I4'),
     )
     ctx = HookContext(
@@ -569,10 +540,7 @@ def test_apply_released_movies_header_formats_header_row():
     worksheet = DashboardWorksheet()
     worksheet._apply_released_movies_header(ctx)
 
-    format_calls = mock_ws.format_range.call_args_list
-    ranges = [c[0][0].value for c in format_calls]
-
-    assert 'I4:X4' in ranges
+    mock_ws.format_range.assert_called_once_with('I4:X4', HEADER_FORMAT)
 
 
 def test_log_missing_movies_logs_movies_not_in_scoreboard(caplog):

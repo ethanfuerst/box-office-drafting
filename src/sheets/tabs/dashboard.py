@@ -281,8 +281,8 @@ class DashboardWorksheet:
         sheet_height = context.get('sheet_height', 100)
         add_picks_table = context.get('add_picks_table', False)
 
-        # Note: Merge ranges are handled by post-write hooks to ensure proper
-        # ordering (write text, merge, then format). This guarantees text centering.
+        # Note: Merge ranges are handled by post-write hooks (_apply_*_title methods)
+        # to ensure proper ordering (write text, merge, format). This guarantees centering.
 
         # Build column widths - only override specific columns after auto_resize
         # Matches original: auto_resize first, then set specific widths
@@ -341,10 +341,12 @@ class DashboardWorksheet:
 
         # Scoreboard formatting (B4:G - from scoreboard_format.json)
         # Note: Header row (B4:G4) formatting is applied by post-write hooks
-        format_dict['B5:B9'] = LEFT_ALIGN  # Name
-        format_dict['C5:C9'] = {**RIGHT_ALIGN, **CURRENCY_FORMAT}  # Scored Revenue
-        format_dict['F5:F9'] = {**RIGHT_ALIGN, **PERCENT_FORMAT}  # % Optimal Picks
-        format_dict['G5:G9'] = {**RIGHT_ALIGN, **CURRENCY_FORMAT}  # Unadjusted Revenue
+        scoreboard_df = context.get('scoreboard_df')
+        scoreboard_end_row = 4 + len(scoreboard_df) if scoreboard_df is not None else 9
+        format_dict[f'B5:B{scoreboard_end_row}'] = LEFT_ALIGN  # Name
+        format_dict[f'C5:C{scoreboard_end_row}'] = {**RIGHT_ALIGN, **CURRENCY_FORMAT}  # Scored Revenue
+        format_dict[f'F5:F{scoreboard_end_row}'] = {**RIGHT_ALIGN, **PERCENT_FORMAT}  # % Optimal Picks
+        format_dict[f'G5:G{scoreboard_end_row}'] = {**RIGHT_ALIGN, **CURRENCY_FORMAT}  # Unadjusted Revenue
 
         # Released movies formatting (I4:X - from released_movies_format.json)
         # Note: Header row (I4:X4) formatting is applied by post-write hooks
@@ -398,14 +400,8 @@ class DashboardWorksheet:
         ctx.worksheet.format_range(title_cell, TITLE_FORMAT)
 
     def _apply_scoreboard_header(self, ctx: HookContext) -> None:
-        """Apply header formatting to scoreboard header row."""
-        loc = ctx.asset.location
-        num_cols = len(ctx.asset.df.columns)
-        header_range = CellRange(
-            start=loc,
-            end=CellLocation(cell=f'{chr(ord(loc.col_letter) + num_cols - 1)}{loc.row_1indexed}'),
-        )
-        ctx.worksheet.format_range(header_range, HEADER_FORMAT)
+        """Apply header formatting to scoreboard header row (B4:G4)."""
+        ctx.worksheet.format_range('B4:G4', HEADER_FORMAT)
 
     # Released movies hooks
     def _apply_released_movies_title(self, ctx: HookContext) -> None:
@@ -416,14 +412,8 @@ class DashboardWorksheet:
         ctx.worksheet.format_range(title_cell, TITLE_FORMAT)
 
     def _apply_released_movies_header(self, ctx: HookContext) -> None:
-        """Apply header formatting to released movies header row."""
-        loc = ctx.asset.location
-        num_cols = len(ctx.asset.df.columns)
-        header_range = CellRange(
-            start=loc,
-            end=CellLocation(cell=f'{chr(ord(loc.col_letter) + num_cols - 1)}{loc.row_1indexed}'),
-        )
-        ctx.worksheet.format_range(header_range, HEADER_FORMAT)
+        """Apply header formatting to released movies header row (I4:X4)."""
+        ctx.worksheet.format_range('I4:X4', HEADER_FORMAT)
 
     def _clear_zero_values(self, ctx: HookContext) -> None:
         """Clear $0 values in Better Pick Scored Revenue column."""
@@ -470,6 +460,10 @@ class DashboardWorksheet:
         metadata_cell = CellLocation(cell='G2')
         ctx.worksheet.write_values(metadata_cell, [[log_string]])
         ctx.worksheet.format_range(metadata_cell, {'horizontalAlignment': 'CENTER'})
+
+        # Widen column G when dashboard is done updating (more text to display)
+        if dashboard_done_updating:
+            ctx.worksheet.set_column_width('G', 200)
 
     def _log_diagnostics(self, ctx: HookContext) -> None:
         """Log diagnostic information about missing movies and revenue thresholds."""
