@@ -25,3 +25,7 @@ htmlcov
 .coverage
 .pytest_cache
 logs/
+
+# Claude Code
+.claude/
+!.claude/CLAUDE.md
