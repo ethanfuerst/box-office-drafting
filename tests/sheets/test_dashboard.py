@@ -186,14 +186,16 @@ def test_dashboard_worksheet_get_formatting():
 
     assert isinstance(formatting, WorksheetFormatting)
     assert formatting.notes == DASHBOARD_NOTES
-    assert 'B2:F2' in formatting.merge_ranges
-    assert 'I2:X2' in formatting.merge_ranges
+    # Merge ranges are handled by post-write hooks, not WorksheetFormatting
+    assert formatting.merge_ranges == []
     assert formatting.column_widths['A'] == 25
-    assert formatting.auto_resize_columns == (1, 23)
+    assert formatting.column_widths['J'] == 284  # Title column
+    assert formatting.auto_resize_columns == (1, 23)  # Auto-resize first, then column_widths override
+    assert formatting.format_dict is not None  # Cell-level formatting applied
 
 
-def test_dashboard_worksheet_get_formatting_includes_picks_merges():
-    """get_formatting includes merge ranges for picks tables when present."""
+def test_dashboard_worksheet_get_formatting_no_merge_ranges():
+    """get_formatting returns empty merge_ranges (merges handled by hooks)."""
     from src.sheets.tabs.dashboard import DashboardWorksheet
 
     worksheet = DashboardWorksheet()
@@ -207,8 +209,9 @@ def test_dashboard_worksheet_get_formatting_includes_picks_merges():
 
     formatting = worksheet.get_formatting(context)
 
-    assert 'B11:G11' in formatting.merge_ranges  # Worst Picks title row
-    assert 'B19:G19' in formatting.merge_ranges  # Best Picks title row
+    # Merge ranges are handled by post-write hooks for proper ordering
+    # (write text, merge, format) to ensure text centering works correctly
+    assert formatting.merge_ranges == []
 
 
 def test_dashboard_worksheet_get_formatting_conditional_format():
@@ -222,7 +225,8 @@ def test_dashboard_worksheet_get_formatting_conditional_format():
 
     assert len(formatting.conditional_formats) == 1
     cond_format = formatting.conditional_formats[0]
-    assert cond_format['range'] == 'X5:X50'
+    # range is a CellRange object, check its .value property
+    assert cond_format['range'].value == 'X5:X50'
     assert cond_format['type'] == 'TEXT_EQ'
     assert cond_format['values'] == ['Yes']
 
@@ -376,7 +380,7 @@ def test_dashboard_worksheet_generate_attaches_post_write_hooks_per_asset():
 
 
 def test_apply_scoreboard_title_writes_dashboard_name():
-    """Dashboard name is written to cell B2."""
+    """Dashboard name is written to cell B2 and cells are merged."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
     from src.sheets.tabs.dashboard import DashboardWorksheet
@@ -401,10 +405,11 @@ def test_apply_scoreboard_title_writes_dashboard_name():
 
     assert len(b2_call) == 1
     assert b2_call[0][0][1] == [['My Test Dashboard']]
+    mock_ws.merge_cells.assert_called_once_with('B2:F2')
 
 
 def test_apply_released_movies_title_writes_title():
-    """Released Movies title is written to cell I2."""
+    """Released Movies title is written to cell I2 and cells are merged."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
     from src.sheets.tabs.dashboard import DashboardWorksheet
@@ -429,10 +434,11 @@ def test_apply_released_movies_title_writes_title():
 
     assert len(i2_call) == 1
     assert i2_call[0][0][1] == [['Released Movies']]
+    mock_ws.merge_cells.assert_called_once_with('I2:X2')
 
 
 def test_apply_worst_picks_title_writes_title():
-    """Worst Picks title is written to correct row based on asset location."""
+    """Worst Picks title is written to correct row and cells are merged."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
     from src.sheets.tabs.dashboard import DashboardWorksheet
@@ -457,10 +463,11 @@ def test_apply_worst_picks_title_writes_title():
 
     assert len(title_call) == 1
     assert title_call[0][0][1] == [['Worst Picks']]
+    mock_ws.merge_cells.assert_called_once_with('B11:G11')
 
 
 def test_apply_best_picks_title_writes_title():
-    """Best Picks title is written to correct row based on asset location."""
+    """Best Picks title is written to correct row and cells are merged."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
     from src.sheets.tabs.dashboard import DashboardWorksheet
@@ -485,6 +492,7 @@ def test_apply_best_picks_title_writes_title():
 
     assert len(title_call) == 1
     assert title_call[0][0][1] == [['Best Picks']]
+    mock_ws.merge_cells.assert_called_once_with('B19:G19')
 
 
 def test_apply_scoreboard_header_formats_header_row():
@@ -660,7 +668,7 @@ def test_log_min_revenue_info_handles_no_revenue_data(caplog):
 
 
 def test_dashboard_worksheet_get_formatting_single_picks_table():
-    """get_formatting includes merge range for worst picks only when no space for both."""
+    """get_formatting returns empty merge_ranges regardless of picks table count."""
     from src.sheets.tabs.dashboard import DashboardWorksheet
 
     worksheet = DashboardWorksheet()
@@ -673,7 +681,8 @@ def test_dashboard_worksheet_get_formatting_single_picks_table():
 
     formatting = worksheet.get_formatting(context)
 
-    assert 'B11:G11' in formatting.merge_ranges  # Worst Picks title row only
+    # Merge ranges are handled by post-write hooks, not WorksheetFormatting
+    assert formatting.merge_ranges == []
 
 
 def test_clear_zero_values_clears_dollar_zero():

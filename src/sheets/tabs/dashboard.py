@@ -35,6 +35,13 @@ TITLE_FORMAT = {'horizontalAlignment': 'CENTER', 'textFormat': {'fontSize': 20, 
 PICKS_TITLE_FORMAT = {'horizontalAlignment': 'CENTER', 'textFormat': {'bold': True}}
 HEADER_FORMAT = {'horizontalAlignment': 'CENTER', 'textFormat': {'fontSize': 10, 'bold': True}}
 
+# Cell formatting constants (migrated from JSON format files)
+CURRENCY_FORMAT = {'numberFormat': {'type': 'CURRENCY', 'pattern': '$#,##0'}}
+PERCENT_FORMAT = {'numberFormat': {'type': 'PERCENT', 'pattern': '#0.0#%'}}
+LEFT_ALIGN = {'horizontalAlignment': 'LEFT'}
+RIGHT_ALIGN = {'horizontalAlignment': 'RIGHT'}
+CENTER_ALIGN = {'horizontalAlignment': 'CENTER'}
+
 
 def calculate_picks_table_layout(
     scoreboard_length: int,
@@ -274,34 +281,31 @@ class DashboardWorksheet:
         sheet_height = context.get('sheet_height', 100)
         add_picks_table = context.get('add_picks_table', False)
 
-        # Build merge ranges for titles
-        merge_ranges = [
-            CellRange.from_string('B2:F2'),   # Dashboard title
-            CellRange.from_string('I2:X2'),   # Released Movies title
-        ]
+        # Note: Merge ranges are handled by post-write hooks to ensure proper
+        # ordering (write text, merge, then format). This guarantees text centering.
 
-        # Add picks table title merges if applicable
-        if add_picks_table:
-            picks_row_num = context.get('picks_row_num')
-            if context.get('add_both_picks_tables'):
-                best_picks_row_num = context.get('best_picks_row_num')
-                merge_ranges.append(CellRange.from_string(f'B{picks_row_num - 1}:G{picks_row_num - 1}'))
-                merge_ranges.append(CellRange.from_string(f'B{best_picks_row_num - 1}:G{best_picks_row_num - 1}'))
-            else:
-                merge_ranges.append(CellRange.from_string(f'B{picks_row_num - 1}:G{picks_row_num - 1}'))
-
-        # Build column widths
+        # Build column widths - only override specific columns after auto_resize
+        # Matches original: auto_resize first, then set specific widths
         column_widths: dict[str | int, int] = {
-            'A': 25, 'H': 25, 'Y': 25,  # Spacer columns
-            'J': 284, 'U': 284,  # Title columns
-            'L': 120, 'M': 120, 'S': 120,  # Revenue columns
-            'G': 164,
-            'R': 142,
-            'W': 104,
-            'X': 106,
+            # Spacer columns
+            'A': 25,
+            'H': 25,
+            'Y': 25,
+            # Title columns
+            'J': 284,  # Title (released movies)
+            'U': 284,  # Better Pick
+            # Revenue columns
+            'L': 120,  # Revenue
+            'M': 120,  # Scored Revenue
+            'R': 142,  # Domestic Revenue %
+            'S': 120,  # Foreign Revenue
+            # Other specific widths
+            'G': 164,  # Unadjusted Revenue
+            'W': 104,  # First Seen Date
+            'X': 106,  # Still In Theaters
         }
         if add_picks_table:
-            column_widths['C'] = 284
+            column_widths['C'] = 284  # Title column for picks tables
 
         # Conditional formatting for "Still In Theaters" column
         conditional_formats = [
@@ -313,20 +317,84 @@ class DashboardWorksheet:
             }
         ]
 
+        # Build format_dict for cell-level formatting (migrated from JSON format files)
+        format_dict = self._build_format_dict(context)
+
         return WorksheetFormatting(
             notes=DASHBOARD_NOTES,
-            merge_ranges=merge_ranges,
             column_widths=column_widths,
             conditional_formats=conditional_formats,
-            auto_resize_columns=(1, 23),
+            format_dict=format_dict,
+            auto_resize_columns=(1, 23),  # Auto-resize first, then column_widths override
         )
+
+    def _build_format_dict(self, context: dict[str, Any]) -> dict[str, Any]:
+        """Build the format_dict for cell-level formatting.
+
+        Migrated from the JSON format config files on main branch:
+        - scoreboard_format.json
+        - released_movies_format.json
+        - worst_picks_format.json
+        """
+        format_dict: dict[str, Any] = {}
+        sheet_height = context.get('sheet_height', 100)
+
+        # Scoreboard formatting (B4:G - from scoreboard_format.json)
+        # Note: Header row (B4:G4) formatting is applied by post-write hooks
+        format_dict['B5:B9'] = LEFT_ALIGN  # Name
+        format_dict['C5:C9'] = {**RIGHT_ALIGN, **CURRENCY_FORMAT}  # Scored Revenue
+        format_dict['F5:F9'] = {**RIGHT_ALIGN, **PERCENT_FORMAT}  # % Optimal Picks
+        format_dict['G5:G9'] = {**RIGHT_ALIGN, **CURRENCY_FORMAT}  # Unadjusted Revenue
+
+        # Released movies formatting (I4:X - from released_movies_format.json)
+        # Note: Header row (I4:X4) formatting is applied by post-write hooks
+        format_dict[f'I5:K{sheet_height}'] = LEFT_ALIGN  # Rank to Drafted By
+        format_dict[f'L5:M{sheet_height}'] = {**LEFT_ALIGN, **CURRENCY_FORMAT}  # Revenue, Scored Revenue
+        format_dict[f'N5:P{sheet_height}'] = RIGHT_ALIGN  # Round Drafted to Multiplier
+        format_dict[f'Q5:Q{sheet_height}'] = {**RIGHT_ALIGN, **CURRENCY_FORMAT}  # Domestic Revenue
+        format_dict[f'R5:R{sheet_height}'] = {**RIGHT_ALIGN, **PERCENT_FORMAT}  # Domestic Revenue %
+        format_dict[f'S5:S{sheet_height}'] = {**RIGHT_ALIGN, **CURRENCY_FORMAT}  # Foreign Revenue
+        format_dict[f'T5:T{sheet_height}'] = {**RIGHT_ALIGN, **PERCENT_FORMAT}  # Foreign Revenue %
+        format_dict[f'V5:V{sheet_height}'] = {**RIGHT_ALIGN, **CURRENCY_FORMAT}  # Better Pick Scored Revenue
+        format_dict[f'W5:W{sheet_height}'] = RIGHT_ALIGN  # First Seen Date
+        format_dict[f'X5:X{sheet_height}'] = CENTER_ALIGN  # Still In Theaters
+
+        # Worst picks formatting (from worst_picks_format.json)
+        add_picks_table = context.get('add_picks_table', False)
+        if add_picks_table:
+            picks_row_num = context.get('picks_row_num')
+            data_start = picks_row_num + 1
+
+            # Note: Header row formatting is applied by post-write hooks
+            format_dict[f'B{data_start}:B'] = LEFT_ALIGN  # Rank
+            format_dict[f'C{data_start}:C'] = LEFT_ALIGN  # Title
+            format_dict[f'D{data_start}:D'] = LEFT_ALIGN  # Drafted By
+            format_dict[f'E{data_start}:E'] = RIGHT_ALIGN  # Overall Pick
+            format_dict[f'F{data_start}:F'] = RIGHT_ALIGN  # Number of Better Picks
+            format_dict[f'G{data_start}:G'] = {**RIGHT_ALIGN, **CURRENCY_FORMAT}  # Missed Revenue
+
+            # Best picks formatting (uses same format as worst picks)
+            if context.get('add_both_picks_tables'):
+                best_picks_row_num = context.get('best_picks_row_num')
+                best_data_start = best_picks_row_num + 1
+
+                # Note: Header row formatting is applied by post-write hooks
+                format_dict[f'B{best_data_start}:B'] = LEFT_ALIGN  # Rank
+                format_dict[f'C{best_data_start}:C'] = LEFT_ALIGN  # Title
+                format_dict[f'D{best_data_start}:D'] = LEFT_ALIGN  # Drafted By
+                format_dict[f'E{best_data_start}:E'] = RIGHT_ALIGN  # Overall Pick
+                format_dict[f'F{best_data_start}:F'] = RIGHT_ALIGN  # Positions Gained
+                format_dict[f'G{best_data_start}:G'] = {**RIGHT_ALIGN, **CURRENCY_FORMAT}  # Actual Revenue
+
+        return format_dict
 
     # Scoreboard hooks
     def _apply_scoreboard_title(self, ctx: HookContext) -> None:
-        """Write dashboard title to cell B2."""
+        """Write dashboard title to cell B2 and merge B2:F2."""
         dashboard_name = ctx.runner_context.get('dashboard_name', '')
         title_cell = CellLocation(cell='B2')
         ctx.worksheet.write_values(title_cell, [[dashboard_name]])
+        ctx.worksheet.merge_cells('B2:F2')
         ctx.worksheet.format_range(title_cell, TITLE_FORMAT)
 
     def _apply_scoreboard_header(self, ctx: HookContext) -> None:
@@ -341,9 +409,10 @@ class DashboardWorksheet:
 
     # Released movies hooks
     def _apply_released_movies_title(self, ctx: HookContext) -> None:
-        """Write Released Movies title to cell I2."""
+        """Write Released Movies title to cell I2 and merge I2:X2."""
         title_cell = CellLocation(cell='I2')
         ctx.worksheet.write_values(title_cell, [['Released Movies']])
+        ctx.worksheet.merge_cells('I2:X2')
         ctx.worksheet.format_range(title_cell, TITLE_FORMAT)
 
     def _apply_released_movies_header(self, ctx: HookContext) -> None:
@@ -409,11 +478,12 @@ class DashboardWorksheet:
 
     # Worst picks hooks
     def _apply_worst_picks_title(self, ctx: HookContext) -> None:
-        """Write Worst Picks title above the asset location."""
+        """Write Worst Picks title above the asset location and merge B:G."""
         loc = ctx.asset.location
         title_row = loc.row_1indexed - 1
         title_cell = CellLocation(cell=f'{loc.col_letter}{title_row}')
         ctx.worksheet.write_values(title_cell, [['Worst Picks']])
+        ctx.worksheet.merge_cells(f'B{title_row}:G{title_row}')
         ctx.worksheet.format_range(title_cell, PICKS_TITLE_FORMAT)
 
     def _apply_worst_picks_header(self, ctx: HookContext) -> None:
@@ -428,11 +498,12 @@ class DashboardWorksheet:
 
     # Best picks hooks
     def _apply_best_picks_title(self, ctx: HookContext) -> None:
-        """Write Best Picks title above the asset location."""
+        """Write Best Picks title above the asset location and merge B:G."""
         loc = ctx.asset.location
         title_row = loc.row_1indexed - 1
         title_cell = CellLocation(cell=f'{loc.col_letter}{title_row}')
         ctx.worksheet.write_values(title_cell, [['Best Picks']])
+        ctx.worksheet.merge_cells(f'B{title_row}:G{title_row}')
         ctx.worksheet.format_range(title_cell, PICKS_TITLE_FORMAT)
 
     def _apply_best_picks_header(self, ctx: HookContext) -> None:

@@ -224,7 +224,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "eftoolkit", specifier = "==2.2.0" },
+    { name = "eftoolkit", specifier = "==2.3.0" },
     { name = "ipykernel", marker = "extra == 'dev'", specifier = ">=6.29.5" },
     { name = "lxml", specifier = ">=6.0.2" },
     { name = "modal", specifier = ">=1.2.1" },
@@ -607,7 +607,7 @@ wheels = [
 
 [[package]]
 name = "eftoolkit"
-version = "2.2.0"
+version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "boto3" },
@@ -616,9 +616,9 @@ dependencies = [
     { name = "pandas" },
     { name = "pyarrow" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/c9/7b76be7f48f5c31c943f01dae207f8962ee2fed849b384d969afd2b62e77/eftoolkit-2.2.0.tar.gz", hash = "sha256:f02292f5b7b33cdc1aaad6647a7ad5e89efc304b5623a4f4cc33355a12d6d9cc", size = 87216, upload-time = "2026-01-18T20:42:13.608Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/11/9c/2be578b0e29c4ef71a736450377a2b4fb352aec814a03c5496387fa58111/eftoolkit-2.3.0.tar.gz", hash = "sha256:61ba502a0583fb3fa5b75b55b24d94e3c8a3496a6222d9588487cee40a1a2fcd", size = 90366, upload-time = "2026-01-18T21:38:13.597Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/0f/ae54db68cb8401cb61102f4beae0c06f077e04af579c9dcbfb8405785e76/eftoolkit-2.2.0-py3-none-any.whl", hash = "sha256:23da1f68e2abacbdfd20f3f60492e2c5cc48a39fc8b413208e12a3ac7b1c4b09", size = 40156, upload-time = "2026-01-18T20:42:12.518Z" },
+    { url = "https://files.pythonhosted.org/packages/d4/50/2f752d4f712a737d223de786453789695cebbbc7557a1fb806417f940079/eftoolkit-2.3.0-py3-none-any.whl", hash = "sha256:b08f70549d8098eb03a3889ec95189c2c2f179fb6f0dfb182b44b554a23e6d1e", size = 41390, upload-time = "2026-01-18T21:38:12.001Z" },
 ]
 
 [[package]]
