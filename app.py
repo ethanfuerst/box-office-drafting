@@ -20,7 +20,6 @@ modal_image = (
         copy=True,
     )
     .add_local_dir('src/config/', remote_path='/root/src/config')
-    .add_local_dir('src/assets/', remote_path='/root/src/assets')
     .add_local_dir(
         'src/dashboard/sqlmesh_project/',
         remote_path='/root/src/dashboard/sqlmesh_project',

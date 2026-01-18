@@ -15,7 +15,7 @@ from typing import Any
 
 from eftoolkit.gsheets.runner import DashboardRunner
 
-from src.sheets.definitions import DashboardWorksheet
+from src.sheets.tabs import DashboardWorksheet
 from src.utils.config import ConfigDict
 
 
@@ -68,9 +68,9 @@ def _adjust_worksheet_order(context: dict[str, Any]) -> None:
     ss = context['spreadsheet']
     existing_worksheets = ss.get_worksheet_names()
     if 'Manual Adds' not in existing_worksheets:
-        ss.create_worksheet('Manual Adds', rows=100, cols=10)
+        ss.create_worksheet('Manual Adds', rows=100, cols=5)
     if 'Multipliers and Exclusions' not in existing_worksheets:
-        ss.create_worksheet('Multipliers and Exclusions', rows=100, cols=10)
+        ss.create_worksheet('Multipliers and Exclusions', rows=100, cols=3)
     if 'Dashboard' in existing_worksheets:
         ss.delete_worksheet('Dashboard')
     ss.create_worksheet('Dashboard', rows=500, cols=25)

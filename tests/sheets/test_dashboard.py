@@ -11,7 +11,7 @@ from tests.conftest import make_config_dict
 
 def test_dashboard_worksheet_name():
     """DashboardWorksheet has correct name property."""
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     worksheet = DashboardWorksheet()
 
@@ -78,8 +78,8 @@ def test_dashboard_worksheet_generate_returns_scoreboard_asset():
     config = {'config_dict': config_dict}
     context = {}
 
-    with patch('src.sheets.definitions.dashboard.table_to_df', side_effect=mock_table_to_df):
-        from src.sheets.definitions.dashboard import DashboardWorksheet
+    with patch('src.sheets.tabs.dashboard.table_to_df', side_effect=mock_table_to_df):
+        from src.sheets.tabs.dashboard import DashboardWorksheet
 
         worksheet = DashboardWorksheet()
         assets = worksheet.generate(config, context)
@@ -156,8 +156,8 @@ def test_dashboard_worksheet_generate_populates_context():
     config = {'config_dict': config_dict}
     context = {}
 
-    with patch('src.sheets.definitions.dashboard.table_to_df', side_effect=mock_table_to_df):
-        from src.sheets.definitions.dashboard import DashboardWorksheet
+    with patch('src.sheets.tabs.dashboard.table_to_df', side_effect=mock_table_to_df):
+        from src.sheets.tabs.dashboard import DashboardWorksheet
 
         worksheet = DashboardWorksheet()
         worksheet.generate(config, context)
@@ -174,7 +174,7 @@ def test_dashboard_worksheet_get_formatting():
     """get_formatting returns WorksheetFormatting with notes, merges, and column widths."""
     from eftoolkit.gsheets.runner.types import WorksheetFormatting
 
-    from src.sheets.definitions.dashboard import DASHBOARD_NOTES, DashboardWorksheet
+    from src.sheets.tabs.dashboard import DASHBOARD_NOTES, DashboardWorksheet
 
     worksheet = DashboardWorksheet()
     context = {
@@ -194,7 +194,7 @@ def test_dashboard_worksheet_get_formatting():
 
 def test_dashboard_worksheet_get_formatting_includes_picks_merges():
     """get_formatting includes merge ranges for picks tables when present."""
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     worksheet = DashboardWorksheet()
     context = {
@@ -213,7 +213,7 @@ def test_dashboard_worksheet_get_formatting_includes_picks_merges():
 
 def test_dashboard_worksheet_get_formatting_conditional_format():
     """get_formatting includes conditional formatting for Still In Theaters column."""
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     worksheet = DashboardWorksheet()
     context = {'sheet_height': 50, 'add_picks_table': False}
@@ -289,8 +289,8 @@ def test_dashboard_worksheet_adds_picks_tables_when_space_available():
     config = {'config_dict': config_dict}
     context = {}
 
-    with patch('src.sheets.definitions.dashboard.table_to_df', side_effect=mock_table_to_df):
-        from src.sheets.definitions.dashboard import DashboardWorksheet
+    with patch('src.sheets.tabs.dashboard.table_to_df', side_effect=mock_table_to_df):
+        from src.sheets.tabs.dashboard import DashboardWorksheet
 
         worksheet = DashboardWorksheet()
         assets = worksheet.generate(config, context)
@@ -360,8 +360,8 @@ def test_dashboard_worksheet_generate_attaches_post_write_hooks_per_asset():
     config = {'config_dict': config_dict}
     context = {}
 
-    with patch('src.sheets.definitions.dashboard.table_to_df', side_effect=mock_table_to_df):
-        from src.sheets.definitions.dashboard import DashboardWorksheet
+    with patch('src.sheets.tabs.dashboard.table_to_df', side_effect=mock_table_to_df):
+        from src.sheets.tabs.dashboard import DashboardWorksheet
 
         worksheet = DashboardWorksheet()
         assets = worksheet.generate(config, context)
@@ -379,7 +379,7 @@ def test_apply_scoreboard_title_writes_dashboard_name():
     """Dashboard name is written to cell B2."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     mock_ws = MagicMock()
     mock_asset = WorksheetAsset(
@@ -407,7 +407,7 @@ def test_apply_released_movies_title_writes_title():
     """Released Movies title is written to cell I2."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     mock_ws = MagicMock()
     mock_asset = WorksheetAsset(
@@ -435,7 +435,7 @@ def test_apply_worst_picks_title_writes_title():
     """Worst Picks title is written to correct row based on asset location."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     mock_ws = MagicMock()
     mock_asset = WorksheetAsset(
@@ -463,7 +463,7 @@ def test_apply_best_picks_title_writes_title():
     """Best Picks title is written to correct row based on asset location."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     mock_ws = MagicMock()
     mock_asset = WorksheetAsset(
@@ -491,7 +491,7 @@ def test_apply_scoreboard_header_formats_header_row():
     """Scoreboard header row is formatted based on asset location and columns."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     mock_ws = MagicMock()
     # Scoreboard has 6 columns (B through G)
@@ -526,7 +526,7 @@ def test_apply_released_movies_header_formats_header_row():
     """Released movies header row is formatted based on asset location and columns."""
     from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
 
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     mock_ws = MagicMock()
     # Released movies has 16 columns (I through X)
@@ -569,7 +569,7 @@ def test_apply_released_movies_header_formats_header_row():
 
 def test_log_missing_movies_logs_movies_not_in_scoreboard(caplog):
     """Movies drafted but not in scoreboard are logged."""
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     config_dict = make_config_dict(update_type='s3')
     context = {
@@ -581,7 +581,7 @@ def test_log_missing_movies_logs_movies_not_in_scoreboard(caplog):
 
     draft_df = pd.DataFrame({'movie': ['Movie A', 'Movie B', 'Movie C']})
 
-    with patch('src.sheets.definitions.dashboard.table_to_df', return_value=draft_df):
+    with patch('src.sheets.tabs.dashboard.table_to_df', return_value=draft_df):
         with caplog.at_level(logging.INFO):
             worksheet = DashboardWorksheet()
             worksheet._log_missing_movies(context)
@@ -591,7 +591,7 @@ def test_log_missing_movies_logs_movies_not_in_scoreboard(caplog):
 
 def test_log_missing_movies_logs_success_when_all_movies_present(caplog):
     """Success message logged when all drafted movies are in scoreboard."""
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     config_dict = make_config_dict(update_type='s3')
     context = {
@@ -603,7 +603,7 @@ def test_log_missing_movies_logs_success_when_all_movies_present(caplog):
 
     draft_df = pd.DataFrame({'movie': ['Movie A', 'Movie B']})
 
-    with patch('src.sheets.definitions.dashboard.table_to_df', return_value=draft_df):
+    with patch('src.sheets.tabs.dashboard.table_to_df', return_value=draft_df):
         with caplog.at_level(logging.INFO):
             worksheet = DashboardWorksheet()
             worksheet._log_missing_movies(context)
@@ -613,7 +613,7 @@ def test_log_missing_movies_logs_success_when_all_movies_present(caplog):
 
 def test_log_min_revenue_info_logs_minimum_revenue(caplog):
     """Minimum revenue of most recent data is logged."""
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     config_dict = make_config_dict(update_type='s3')
     context = {'config_dict': config_dict, 'year': 2025}
@@ -625,7 +625,7 @@ def test_log_min_revenue_info_logs_minimum_revenue(caplog):
     mock_result2.fetchnumpy.return_value = {'title': np.array(['Low Revenue Movie'])}
     mock_db.connection.query.side_effect = [mock_result1, mock_result2]
 
-    with patch('src.sheets.definitions.dashboard.get_duckdb') as mock_get_duckdb:
+    with patch('src.sheets.tabs.dashboard.get_duckdb') as mock_get_duckdb:
         mock_get_duckdb.return_value.__enter__.return_value = mock_db
         mock_get_duckdb.return_value.__exit__.return_value = None
 
@@ -638,7 +638,7 @@ def test_log_min_revenue_info_logs_minimum_revenue(caplog):
 
 def test_log_min_revenue_info_handles_no_revenue_data(caplog):
     """Handles case when no revenue data is found."""
-    from src.sheets.definitions.dashboard import DashboardWorksheet
+    from src.sheets.tabs.dashboard import DashboardWorksheet
 
     config_dict = make_config_dict(update_type='s3')
     context = {'config_dict': config_dict, 'year': 2025}
@@ -648,7 +648,7 @@ def test_log_min_revenue_info_handles_no_revenue_data(caplog):
     mock_result.fetchnumpy.return_value = {'revenue': np.array([])}
     mock_db.connection.query.return_value = mock_result
 
-    with patch('src.sheets.definitions.dashboard.get_duckdb') as mock_get_duckdb:
+    with patch('src.sheets.tabs.dashboard.get_duckdb') as mock_get_duckdb:
         mock_get_duckdb.return_value.__enter__.return_value = mock_db
         mock_get_duckdb.return_value.__exit__.return_value = None
 

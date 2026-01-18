@@ -117,7 +117,6 @@ class DashboardWorksheet:
         config_dict: ConfigDict = config['config_dict']
         assets = []
 
-        # Load DataFrames from DuckDB
         released_movies_df = table_to_df(
             config_dict,
             'combined.base_query',
