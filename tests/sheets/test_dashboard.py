@@ -186,8 +186,9 @@ def test_dashboard_worksheet_get_formatting():
 
     assert isinstance(formatting, WorksheetFormatting)
     assert formatting.notes == DASHBOARD_NOTES
-    assert 'B2:F2' in formatting.merge_ranges
-    assert 'I2:X2' in formatting.merge_ranges
+    merge_range_values = [r.value for r in formatting.merge_ranges]
+    assert 'B2:F2' in merge_range_values
+    assert 'I2:X2' in merge_range_values
     assert formatting.column_widths['A'] == 25
     assert formatting.auto_resize_columns == (1, 23)
 
@@ -207,8 +208,9 @@ def test_dashboard_worksheet_get_formatting_includes_picks_merges():
 
     formatting = worksheet.get_formatting(context)
 
-    assert 'B11:G11' in formatting.merge_ranges  # Worst Picks title row
-    assert 'B19:G19' in formatting.merge_ranges  # Best Picks title row
+    merge_range_values = [r.value for r in formatting.merge_ranges]
+    assert 'B11:G11' in merge_range_values  # Worst Picks title row
+    assert 'B19:G19' in merge_range_values  # Best Picks title row
 
 
 def test_dashboard_worksheet_get_formatting_conditional_format():
@@ -222,7 +224,7 @@ def test_dashboard_worksheet_get_formatting_conditional_format():
 
     assert len(formatting.conditional_formats) == 1
     cond_format = formatting.conditional_formats[0]
-    assert cond_format['range'] == 'X5:X50'
+    assert cond_format['range'].value == 'X5:X50'
     assert cond_format['type'] == 'TEXT_EQ'
     assert cond_format['values'] == ['Yes']
 
@@ -397,7 +399,7 @@ def test_apply_scoreboard_title_writes_dashboard_name():
     worksheet._apply_scoreboard_title(ctx)
 
     write_calls = mock_ws.write_values.call_args_list
-    b2_call = [c for c in write_calls if c[0][0] == 'B2']
+    b2_call = [c for c in write_calls if c[0][0].cell == 'B2']
 
     assert len(b2_call) == 1
     assert b2_call[0][0][1] == [['My Test Dashboard']]
@@ -425,7 +427,7 @@ def test_apply_released_movies_title_writes_title():
     worksheet._apply_released_movies_title(ctx)
 
     write_calls = mock_ws.write_values.call_args_list
-    i2_call = [c for c in write_calls if c[0][0] == 'I2']
+    i2_call = [c for c in write_calls if c[0][0].cell == 'I2']
 
     assert len(i2_call) == 1
     assert i2_call[0][0][1] == [['Released Movies']]
@@ -453,7 +455,7 @@ def test_apply_worst_picks_title_writes_title():
     worksheet._apply_worst_picks_title(ctx)
 
     write_calls = mock_ws.write_values.call_args_list
-    title_call = [c for c in write_calls if c[0][0] == 'B11']
+    title_call = [c for c in write_calls if c[0][0].cell == 'B11']
 
     assert len(title_call) == 1
     assert title_call[0][0][1] == [['Worst Picks']]
@@ -481,7 +483,7 @@ def test_apply_best_picks_title_writes_title():
     worksheet._apply_best_picks_title(ctx)
 
     write_calls = mock_ws.write_values.call_args_list
-    title_call = [c for c in write_calls if c[0][0] == 'B19']
+    title_call = [c for c in write_calls if c[0][0].cell == 'B19']
 
     assert len(title_call) == 1
     assert title_call[0][0][1] == [['Best Picks']]
@@ -517,7 +519,7 @@ def test_apply_scoreboard_header_formats_header_row():
     worksheet._apply_scoreboard_header(ctx)
 
     format_calls = mock_ws.format_range.call_args_list
-    ranges = [c[0][0] for c in format_calls]
+    ranges = [c[0][0].value for c in format_calls]
 
     assert 'B4:G4' in ranges
 
@@ -562,7 +564,7 @@ def test_apply_released_movies_header_formats_header_row():
     worksheet._apply_released_movies_header(ctx)
 
     format_calls = mock_ws.format_range.call_args_list
-    ranges = [c[0][0] for c in format_calls]
+    ranges = [c[0][0].value for c in format_calls]
 
     assert 'I4:X4' in ranges
 

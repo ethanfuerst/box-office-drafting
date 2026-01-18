@@ -22,12 +22,7 @@ def run_sqlmesh_plan(config_dict: ConfigDict) -> None:
     _ = sqlmesh_context.run()
 
 
-def load_dashboard_data(config_dict: ConfigDict) -> None:
-    '''Load configuration and update the Google Sheet dashboard.'''
-    run_dashboard(config_dict)
-
-
 def google_sheet_sync(config_dict: ConfigDict) -> None:
     '''Run SQLMesh plan and update Google Sheet dashboard with latest data.'''
     run_sqlmesh_plan(config_dict)
-    load_dashboard_data(config_dict)
+    run_dashboard(config_dict)

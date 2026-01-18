@@ -26,9 +26,9 @@ from src.utils.query import table_to_df
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
 DASHBOARD_NOTES = {
-    'U4': 'A movie is considered a better pick if it was drafted after by a different drafter and made more revenue (adjusted for multiplier).',
-    'W4': 'The first date a movie was seen in the database.',
-    'X4': 'A movie is considered still in theaters if the first record is within the last week or the revenue has changed in the last week.',
+    CellLocation(cell='U4'): 'A movie is considered a better pick if it was drafted after by a different drafter and made more revenue (adjusted for multiplier).',
+    CellLocation(cell='W4'): 'The first date a movie was seen in the database.',
+    CellLocation(cell='X4'): 'A movie is considered still in theaters if the first record is within the last week or the revenue has changed in the last week.',
 }
 
 TITLE_FORMAT = {'horizontalAlignment': 'CENTER', 'textFormat': {'fontSize': 20, 'bold': True}}
@@ -276,8 +276,8 @@ class DashboardWorksheet:
 
         # Build merge ranges for titles
         merge_ranges = [
-            'B2:F2',   # Dashboard title
-            'I2:X2',   # Released Movies title
+            CellRange.from_string('B2:F2'),   # Dashboard title
+            CellRange.from_string('I2:X2'),   # Released Movies title
         ]
 
         # Add picks table title merges if applicable
@@ -285,10 +285,10 @@ class DashboardWorksheet:
             picks_row_num = context.get('picks_row_num')
             if context.get('add_both_picks_tables'):
                 best_picks_row_num = context.get('best_picks_row_num')
-                merge_ranges.append(f'B{picks_row_num - 1}:G{picks_row_num - 1}')
-                merge_ranges.append(f'B{best_picks_row_num - 1}:G{best_picks_row_num - 1}')
+                merge_ranges.append(CellRange.from_string(f'B{picks_row_num - 1}:G{picks_row_num - 1}'))
+                merge_ranges.append(CellRange.from_string(f'B{best_picks_row_num - 1}:G{best_picks_row_num - 1}'))
             else:
-                merge_ranges.append(f'B{picks_row_num - 1}:G{picks_row_num - 1}')
+                merge_ranges.append(CellRange.from_string(f'B{picks_row_num - 1}:G{picks_row_num - 1}'))
 
         # Build column widths
         column_widths: dict[str | int, int] = {
@@ -306,7 +306,7 @@ class DashboardWorksheet:
         # Conditional formatting for "Still In Theaters" column
         conditional_formats = [
             {
-                'range': f'X5:X{sheet_height}',
+                'range': CellRange.from_string(f'X5:X{sheet_height}'),
                 'type': 'TEXT_EQ',
                 'values': ['Yes'],
                 'format': {'backgroundColor': {'red': 0, 'green': 0.9, 'blue': 0}},
@@ -325,8 +325,9 @@ class DashboardWorksheet:
     def _apply_scoreboard_title(self, ctx: HookContext) -> None:
         """Write dashboard title to cell B2."""
         dashboard_name = ctx.runner_context.get('dashboard_name', '')
-        ctx.worksheet.write_values('B2', [[dashboard_name]])
-        ctx.worksheet.format_range('B2', TITLE_FORMAT)
+        title_cell = CellLocation(cell='B2')
+        ctx.worksheet.write_values(title_cell, [[dashboard_name]])
+        ctx.worksheet.format_range(title_cell, TITLE_FORMAT)
 
     def _apply_scoreboard_header(self, ctx: HookContext) -> None:
         """Apply header formatting to scoreboard header row."""
@@ -336,13 +337,14 @@ class DashboardWorksheet:
             start=loc,
             end=CellLocation(cell=f'{chr(ord(loc.col_letter) + num_cols - 1)}{loc.row_1indexed}'),
         )
-        ctx.worksheet.format_range(str(header_range), HEADER_FORMAT)
+        ctx.worksheet.format_range(header_range, HEADER_FORMAT)
 
     # Released movies hooks
     def _apply_released_movies_title(self, ctx: HookContext) -> None:
         """Write Released Movies title to cell I2."""
-        ctx.worksheet.write_values('I2', [['Released Movies']])
-        ctx.worksheet.format_range('I2', TITLE_FORMAT)
+        title_cell = CellLocation(cell='I2')
+        ctx.worksheet.write_values(title_cell, [['Released Movies']])
+        ctx.worksheet.format_range(title_cell, TITLE_FORMAT)
 
     def _apply_released_movies_header(self, ctx: HookContext) -> None:
         """Apply header formatting to released movies header row."""
@@ -352,7 +354,7 @@ class DashboardWorksheet:
             start=loc,
             end=CellLocation(cell=f'{chr(ord(loc.col_letter) + num_cols - 1)}{loc.row_1indexed}'),
         )
-        ctx.worksheet.format_range(str(header_range), HEADER_FORMAT)
+        ctx.worksheet.format_range(header_range, HEADER_FORMAT)
 
     def _clear_zero_values(self, ctx: HookContext) -> None:
         """Clear $0 values in Better Pick Scored Revenue column."""
@@ -362,7 +364,7 @@ class DashboardWorksheet:
             for i in range(4, len(all_data)):
                 cell_value = all_data.iloc[i, v_col_idx] if i < len(all_data) else None
                 if cell_value == '$0':
-                    ctx.worksheet.write_values(f'V{i + 1}', [['']])
+                    ctx.worksheet.write_values(CellLocation(cell=f'V{i + 1}'), [['']])
 
     def _write_timestamp_metadata(self, ctx: HookContext) -> None:
         """Write timestamp and update status metadata."""
@@ -396,8 +398,9 @@ class DashboardWorksheet:
         dt = published_timestamp_of_most_recent_data.item()
         log_string += f'\nData Updated Through\n{dt.strftime(DATETIME_FORMAT)} UTC'
 
-        ctx.worksheet.write_values('G2', [[log_string]])
-        ctx.worksheet.format_range('G2', {'horizontalAlignment': 'CENTER'})
+        metadata_cell = CellLocation(cell='G2')
+        ctx.worksheet.write_values(metadata_cell, [[log_string]])
+        ctx.worksheet.format_range(metadata_cell, {'horizontalAlignment': 'CENTER'})
 
     def _log_diagnostics(self, ctx: HookContext) -> None:
         """Log diagnostic information about missing movies and revenue thresholds."""
@@ -409,8 +412,9 @@ class DashboardWorksheet:
         """Write Worst Picks title above the asset location."""
         loc = ctx.asset.location
         title_row = loc.row_1indexed - 1
-        ctx.worksheet.write_values(f'{loc.col_letter}{title_row}', [['Worst Picks']])
-        ctx.worksheet.format_range(f'{loc.col_letter}{title_row}', PICKS_TITLE_FORMAT)
+        title_cell = CellLocation(cell=f'{loc.col_letter}{title_row}')
+        ctx.worksheet.write_values(title_cell, [['Worst Picks']])
+        ctx.worksheet.format_range(title_cell, PICKS_TITLE_FORMAT)
 
     def _apply_worst_picks_header(self, ctx: HookContext) -> None:
         """Apply header formatting to worst picks header row."""
@@ -420,15 +424,16 @@ class DashboardWorksheet:
             start=loc,
             end=CellLocation(cell=f'{chr(ord(loc.col_letter) + num_cols - 1)}{loc.row_1indexed}'),
         )
-        ctx.worksheet.format_range(str(header_range), HEADER_FORMAT)
+        ctx.worksheet.format_range(header_range, HEADER_FORMAT)
 
     # Best picks hooks
     def _apply_best_picks_title(self, ctx: HookContext) -> None:
         """Write Best Picks title above the asset location."""
         loc = ctx.asset.location
         title_row = loc.row_1indexed - 1
-        ctx.worksheet.write_values(f'{loc.col_letter}{title_row}', [['Best Picks']])
-        ctx.worksheet.format_range(f'{loc.col_letter}{title_row}', PICKS_TITLE_FORMAT)
+        title_cell = CellLocation(cell=f'{loc.col_letter}{title_row}')
+        ctx.worksheet.write_values(title_cell, [['Best Picks']])
+        ctx.worksheet.format_range(title_cell, PICKS_TITLE_FORMAT)
 
     def _apply_best_picks_header(self, ctx: HookContext) -> None:
         """Apply header formatting to best picks header row."""
@@ -438,7 +443,7 @@ class DashboardWorksheet:
             start=loc,
             end=CellLocation(cell=f'{chr(ord(loc.col_letter) + num_cols - 1)}{loc.row_1indexed}'),
         )
-        ctx.worksheet.format_range(str(header_range), HEADER_FORMAT)
+        ctx.worksheet.format_range(header_range, HEADER_FORMAT)
 
     # Diagnostic helpers
     def _log_missing_movies(self, context: dict[str, Any]) -> None:
