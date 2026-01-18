@@ -659,3 +659,323 @@ def test_log_min_revenue_info_handles_no_revenue_data(caplog):
             worksheet._log_min_revenue_info(context)
 
     assert 'No revenue data found' in caplog.text
+
+
+def test_dashboard_worksheet_get_formatting_single_picks_table():
+    """get_formatting includes merge range for worst picks only when no space for both."""
+    from src.sheets.tabs.dashboard import DashboardWorksheet
+
+    worksheet = DashboardWorksheet()
+    context = {
+        'sheet_height': 50,
+        'add_picks_table': True,
+        'add_both_picks_tables': False,
+        'picks_row_num': 12,
+    }
+
+    formatting = worksheet.get_formatting(context)
+
+    merge_range_values = [r.value for r in formatting.merge_ranges]
+    assert 'B11:G11' in merge_range_values  # Worst Picks title row only
+
+
+def test_clear_zero_values_clears_dollar_zero():
+    """$0 values in Better Pick Scored Revenue column are cleared."""
+    from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
+
+    from src.sheets.tabs.dashboard import DashboardWorksheet
+
+    mock_ws = MagicMock()
+    # Create a DataFrame with enough rows for the loop (starts at index 4)
+    # The loop checks indices 4, 5, 6, 7 etc.
+    mock_ws.read.return_value = pd.DataFrame({
+        'V': ['Header', '$100', '$200', '$300', '$0', '$500', '$0', '$700'],
+    })
+    mock_asset = WorksheetAsset(
+        df=pd.DataFrame({'col': [1]}),
+        location=CellLocation(cell='I4'),
+    )
+    ctx = HookContext(
+        worksheet=mock_ws,
+        asset=mock_asset,
+        worksheet_name='Dashboard',
+        runner_context={},
+    )
+
+    worksheet = DashboardWorksheet()
+    worksheet._clear_zero_values(ctx)
+
+    # Should clear cells at indices 4 and 6 (rows 5 and 7)
+    write_calls = mock_ws.write_values.call_args_list
+    cleared_cells = [c[0][0].cell for c in write_calls]
+    assert 'V5' in cleared_cells  # Index 4 -> row 5
+    assert 'V7' in cleared_cells  # Index 6 -> row 7
+
+
+def test_write_timestamp_metadata_writes_to_g2():
+    """Timestamp metadata is written to cell G2."""
+    from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
+
+    from src.sheets.tabs.dashboard import DashboardWorksheet
+
+    mock_ws = MagicMock()
+    mock_asset = WorksheetAsset(
+        df=pd.DataFrame({'col': [1]}),
+        location=CellLocation(cell='I4'),
+    )
+
+    config_dict = make_config_dict(update_type='s3')
+    released_movies_df = pd.DataFrame({'Still In Theaters': ['Yes']})
+
+    ctx = HookContext(
+        worksheet=mock_ws,
+        asset=mock_asset,
+        worksheet_name='Dashboard',
+        runner_context={
+            'config_dict': config_dict,
+            'released_movies_df': released_movies_df,
+            'year': 2025,
+        },
+    )
+
+    mock_db = MagicMock()
+    mock_result = MagicMock()
+    # Use numpy datetime64 since .item() is called on it
+    mock_result.fetchnumpy.return_value = {
+        'published_timestamp_utc': np.array(['2025-01-15T12:00:00'], dtype='datetime64[s]')
+    }
+    mock_db.connection.query.return_value = mock_result
+
+    with patch('src.sheets.tabs.dashboard.get_duckdb') as mock_get_duckdb:
+        mock_get_duckdb.return_value.__enter__.return_value = mock_db
+        mock_get_duckdb.return_value.__exit__.return_value = None
+
+        worksheet = DashboardWorksheet()
+        worksheet._write_timestamp_metadata(ctx)
+
+    write_calls = mock_ws.write_values.call_args_list
+    g2_call = [c for c in write_calls if c[0][0].cell == 'G2']
+
+    assert len(g2_call) == 1
+    assert 'Dashboard Last Updated' in g2_call[0][0][1][0][0]
+
+
+def test_write_timestamp_metadata_includes_done_message_when_complete():
+    """Timestamp includes 'done updating' message when all movies done and year passed."""
+    from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
+
+    from src.sheets.tabs.dashboard import DashboardWorksheet
+
+    mock_ws = MagicMock()
+    mock_asset = WorksheetAsset(
+        df=pd.DataFrame({'col': [1]}),
+        location=CellLocation(cell='I4'),
+    )
+
+    config_dict = make_config_dict(update_type='s3')
+    # All movies have "Still In Theaters" = "No" and year is in the past
+    released_movies_df = pd.DataFrame({'Still In Theaters': ['No', 'No', 'No']})
+
+    ctx = HookContext(
+        worksheet=mock_ws,
+        asset=mock_asset,
+        worksheet_name='Dashboard',
+        runner_context={
+            'config_dict': config_dict,
+            'released_movies_df': released_movies_df,
+            'year': 2020,  # Past year to trigger "done updating" message
+        },
+    )
+
+    mock_db = MagicMock()
+    mock_result = MagicMock()
+    mock_result.fetchnumpy.return_value = {
+        'published_timestamp_utc': np.array(['2025-01-15T12:00:00'], dtype='datetime64[s]')
+    }
+    mock_db.connection.query.return_value = mock_result
+
+    with patch('src.sheets.tabs.dashboard.get_duckdb') as mock_get_duckdb:
+        mock_get_duckdb.return_value.__enter__.return_value = mock_db
+        mock_get_duckdb.return_value.__exit__.return_value = None
+
+        worksheet = DashboardWorksheet()
+        worksheet._write_timestamp_metadata(ctx)
+
+    write_calls = mock_ws.write_values.call_args_list
+    g2_call = [c for c in write_calls if c[0][0].cell == 'G2']
+
+    assert len(g2_call) == 1
+    assert 'Dashboard is done updating' in g2_call[0][0][1][0][0]
+
+
+def test_write_timestamp_metadata_returns_early_without_config():
+    """_write_timestamp_metadata returns early when config_dict is None."""
+    from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
+
+    from src.sheets.tabs.dashboard import DashboardWorksheet
+
+    mock_ws = MagicMock()
+    mock_asset = WorksheetAsset(
+        df=pd.DataFrame({'col': [1]}),
+        location=CellLocation(cell='I4'),
+    )
+    ctx = HookContext(
+        worksheet=mock_ws,
+        asset=mock_asset,
+        worksheet_name='Dashboard',
+        runner_context={},  # No config_dict
+    )
+
+    worksheet = DashboardWorksheet()
+    worksheet._write_timestamp_metadata(ctx)
+
+    mock_ws.write_values.assert_not_called()
+
+
+def test_log_diagnostics_calls_both_helpers():
+    """_log_diagnostics calls both _log_missing_movies and _log_min_revenue_info."""
+    from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
+
+    from src.sheets.tabs.dashboard import DashboardWorksheet
+
+    mock_ws = MagicMock()
+    mock_asset = WorksheetAsset(
+        df=pd.DataFrame({'col': [1]}),
+        location=CellLocation(cell='I4'),
+    )
+    ctx = HookContext(
+        worksheet=mock_ws,
+        asset=mock_asset,
+        worksheet_name='Dashboard',
+        runner_context={},
+    )
+
+    worksheet = DashboardWorksheet()
+
+    with patch.object(worksheet, '_log_missing_movies') as mock_missing:
+        with patch.object(worksheet, '_log_min_revenue_info') as mock_min_rev:
+            worksheet._log_diagnostics(ctx)
+
+    mock_missing.assert_called_once_with(ctx.runner_context)
+    mock_min_rev.assert_called_once_with(ctx.runner_context)
+
+
+def test_apply_worst_picks_header_formats_header_row():
+    """Worst picks header row is formatted based on asset location and columns."""
+    from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
+
+    from src.sheets.tabs.dashboard import DashboardWorksheet
+
+    mock_ws = MagicMock()
+    mock_asset = WorksheetAsset(
+        df=pd.DataFrame({
+            'Rank': [1],
+            'Title': ['Movie'],
+            'Drafted By': ['Player'],
+            'Overall Pick': [1],
+            'Number of Better Picks': [2],
+            'Missed Revenue': [100000],
+        }),
+        location=CellLocation(cell='B12'),
+    )
+    ctx = HookContext(
+        worksheet=mock_ws,
+        asset=mock_asset,
+        worksheet_name='Dashboard',
+        runner_context={},
+    )
+
+    worksheet = DashboardWorksheet()
+    worksheet._apply_worst_picks_header(ctx)
+
+    format_calls = mock_ws.format_range.call_args_list
+    ranges = [c[0][0].value for c in format_calls]
+
+    assert 'B12:G12' in ranges
+
+
+def test_apply_best_picks_header_formats_header_row():
+    """Best picks header row is formatted based on asset location and columns."""
+    from eftoolkit.gsheets.runner.types import CellLocation, HookContext, WorksheetAsset
+
+    from src.sheets.tabs.dashboard import DashboardWorksheet
+
+    mock_ws = MagicMock()
+    mock_asset = WorksheetAsset(
+        df=pd.DataFrame({
+            'Rank': [1],
+            'Title': ['Movie'],
+            'Drafted By': ['Player'],
+            'Overall Pick': [1],
+            'Positions Gained': [3],
+            'Actual Revenue': [1500000],
+        }),
+        location=CellLocation(cell='B20'),
+    )
+    ctx = HookContext(
+        worksheet=mock_ws,
+        asset=mock_asset,
+        worksheet_name='Dashboard',
+        runner_context={},
+    )
+
+    worksheet = DashboardWorksheet()
+    worksheet._apply_best_picks_header(ctx)
+
+    format_calls = mock_ws.format_range.call_args_list
+    ranges = [c[0][0].value for c in format_calls]
+
+    assert 'B20:G20' in ranges
+
+
+def test_log_missing_movies_returns_early_without_config():
+    """_log_missing_movies returns early when config_dict is None."""
+    from src.sheets.tabs.dashboard import DashboardWorksheet
+
+    context = {'released_movies_df': pd.DataFrame({'Title': ['Movie A']})}
+
+    worksheet = DashboardWorksheet()
+
+    with patch('src.sheets.tabs.dashboard.table_to_df') as mock_table_to_df:
+        worksheet._log_missing_movies(context)
+
+    mock_table_to_df.assert_not_called()
+
+
+def test_log_min_revenue_info_returns_early_without_config():
+    """_log_min_revenue_info returns early when config_dict is None."""
+    from src.sheets.tabs.dashboard import DashboardWorksheet
+
+    context = {'year': 2025}  # No config_dict
+
+    worksheet = DashboardWorksheet()
+
+    with patch('src.sheets.tabs.dashboard.get_duckdb') as mock_get_duckdb:
+        worksheet._log_min_revenue_info(context)
+
+    mock_get_duckdb.assert_not_called()
+
+
+def test_log_min_revenue_info_logs_all_movies_above_minimum(caplog):
+    """Success message logged when all movies are above minimum revenue."""
+    from src.sheets.tabs.dashboard import DashboardWorksheet
+
+    config_dict = make_config_dict(update_type='s3')
+    context = {'config_dict': config_dict, 'year': 2025}
+
+    mock_db = MagicMock()
+    mock_result1 = MagicMock()
+    mock_result1.fetchnumpy.return_value = {'revenue': np.array([1000000])}
+    mock_result2 = MagicMock()
+    mock_result2.fetchnumpy.return_value = {'title': np.array([])}  # No movies under min
+    mock_db.connection.query.side_effect = [mock_result1, mock_result2]
+
+    with patch('src.sheets.tabs.dashboard.get_duckdb') as mock_get_duckdb:
+        mock_get_duckdb.return_value.__enter__.return_value = mock_db
+        mock_get_duckdb.return_value.__exit__.return_value = None
+
+        with caplog.at_level(logging.INFO):
+            worksheet = DashboardWorksheet()
+            worksheet._log_min_revenue_info(context)
+
+    assert 'All movies are above the minimum revenue' in caplog.text

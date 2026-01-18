@@ -31,7 +31,7 @@ def test_adjust_worksheet_order_creates_worksheets():
 
     from src.sheets.runner import _adjust_worksheet_order
 
-    _adjust_worksheet_order({'spreadsheet': mock_ss})
+    _adjust_worksheet_order(mock_ss)
 
     # Should create Manual Adds, Multipliers, and Dashboard
     create_calls = mock_ss.create_worksheet.call_args_list
@@ -49,6 +49,6 @@ def test_adjust_worksheet_order_deletes_existing_dashboard():
 
     from src.sheets.runner import _adjust_worksheet_order
 
-    _adjust_worksheet_order({'spreadsheet': mock_ss})
+    _adjust_worksheet_order(mock_ss)
 
     mock_ss.delete_worksheet.assert_called_once_with('Dashboard')
