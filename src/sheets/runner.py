@@ -59,13 +59,12 @@ def _load_credentials(gspread_credentials_name: str) -> dict[str, Any]:
         )
 
 
-def _adjust_worksheet_order(context: dict[str, Any]) -> None:
+def _adjust_worksheet_order(ss: Any) -> None:
     """Create and configure the Google Sheet worksheet structure.
 
     This is used as a pre_run_hooks entry for DashboardRunner (eftoolkit 1.2.0+).
-    The context contains 'spreadsheet' with the active Spreadsheet instance.
+    The hook receives the Spreadsheet instance directly.
     """
-    ss = context['spreadsheet']
     existing_worksheets = ss.get_worksheet_names()
     if 'Manual Adds' not in existing_worksheets:
         ss.create_worksheet('Manual Adds', rows=100, cols=5)
