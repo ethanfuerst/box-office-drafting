@@ -186,9 +186,8 @@ def test_dashboard_worksheet_get_formatting():
 
     assert isinstance(formatting, WorksheetFormatting)
     assert formatting.notes == DASHBOARD_NOTES
-    merge_range_values = [r.value for r in formatting.merge_ranges]
-    assert 'B2:F2' in merge_range_values
-    assert 'I2:X2' in merge_range_values
+    assert 'B2:F2' in formatting.merge_ranges
+    assert 'I2:X2' in formatting.merge_ranges
     assert formatting.column_widths['A'] == 25
     assert formatting.auto_resize_columns == (1, 23)
 
@@ -208,9 +207,8 @@ def test_dashboard_worksheet_get_formatting_includes_picks_merges():
 
     formatting = worksheet.get_formatting(context)
 
-    merge_range_values = [r.value for r in formatting.merge_ranges]
-    assert 'B11:G11' in merge_range_values  # Worst Picks title row
-    assert 'B19:G19' in merge_range_values  # Best Picks title row
+    assert 'B11:G11' in formatting.merge_ranges  # Worst Picks title row
+    assert 'B19:G19' in formatting.merge_ranges  # Best Picks title row
 
 
 def test_dashboard_worksheet_get_formatting_conditional_format():
@@ -224,7 +222,7 @@ def test_dashboard_worksheet_get_formatting_conditional_format():
 
     assert len(formatting.conditional_formats) == 1
     cond_format = formatting.conditional_formats[0]
-    assert cond_format['range'].value == 'X5:X50'
+    assert cond_format['range'] == 'X5:X50'
     assert cond_format['type'] == 'TEXT_EQ'
     assert cond_format['values'] == ['Yes']
 
@@ -675,8 +673,7 @@ def test_dashboard_worksheet_get_formatting_single_picks_table():
 
     formatting = worksheet.get_formatting(context)
 
-    merge_range_values = [r.value for r in formatting.merge_ranges]
-    assert 'B11:G11' in merge_range_values  # Worst Picks title row only
+    assert 'B11:G11' in formatting.merge_ranges  # Worst Picks title row only
 
 
 def test_clear_zero_values_clears_dollar_zero():
