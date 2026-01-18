@@ -13,6 +13,7 @@ from typing import Any
 
 from eftoolkit.gsheets.runner.types import (
     CellLocation,
+    CellRange,
     HookContext,
     WorksheetAsset,
     WorksheetFormatting,
@@ -331,8 +332,11 @@ class DashboardWorksheet:
         """Apply header formatting to scoreboard header row."""
         loc = ctx.asset.location
         num_cols = len(ctx.asset.df.columns)
-        end_col = chr(ord(loc.col_letter) + num_cols - 1)
-        ctx.worksheet.format_range(f'{loc.col_letter}{loc.row_1indexed}:{end_col}{loc.row_1indexed}', HEADER_FORMAT)
+        header_range = CellRange(
+            start=loc,
+            end=CellLocation(cell=f'{chr(ord(loc.col_letter) + num_cols - 1)}{loc.row_1indexed}'),
+        )
+        ctx.worksheet.format_range(str(header_range), HEADER_FORMAT)
 
     # Released movies hooks
     def _apply_released_movies_title(self, ctx: HookContext) -> None:
@@ -344,8 +348,11 @@ class DashboardWorksheet:
         """Apply header formatting to released movies header row."""
         loc = ctx.asset.location
         num_cols = len(ctx.asset.df.columns)
-        end_col = chr(ord(loc.col_letter) + num_cols - 1)
-        ctx.worksheet.format_range(f'{loc.col_letter}{loc.row_1indexed}:{end_col}{loc.row_1indexed}', HEADER_FORMAT)
+        header_range = CellRange(
+            start=loc,
+            end=CellLocation(cell=f'{chr(ord(loc.col_letter) + num_cols - 1)}{loc.row_1indexed}'),
+        )
+        ctx.worksheet.format_range(str(header_range), HEADER_FORMAT)
 
     def _clear_zero_values(self, ctx: HookContext) -> None:
         """Clear $0 values in Better Pick Scored Revenue column."""
@@ -409,8 +416,11 @@ class DashboardWorksheet:
         """Apply header formatting to worst picks header row."""
         loc = ctx.asset.location
         num_cols = len(ctx.asset.df.columns)
-        end_col = chr(ord(loc.col_letter) + num_cols - 1)
-        ctx.worksheet.format_range(f'{loc.col_letter}{loc.row_1indexed}:{end_col}{loc.row_1indexed}', HEADER_FORMAT)
+        header_range = CellRange(
+            start=loc,
+            end=CellLocation(cell=f'{chr(ord(loc.col_letter) + num_cols - 1)}{loc.row_1indexed}'),
+        )
+        ctx.worksheet.format_range(str(header_range), HEADER_FORMAT)
 
     # Best picks hooks
     def _apply_best_picks_title(self, ctx: HookContext) -> None:
@@ -424,8 +434,11 @@ class DashboardWorksheet:
         """Apply header formatting to best picks header row."""
         loc = ctx.asset.location
         num_cols = len(ctx.asset.df.columns)
-        end_col = chr(ord(loc.col_letter) + num_cols - 1)
-        ctx.worksheet.format_range(f'{loc.col_letter}{loc.row_1indexed}:{end_col}{loc.row_1indexed}', HEADER_FORMAT)
+        header_range = CellRange(
+            start=loc,
+            end=CellLocation(cell=f'{chr(ord(loc.col_letter) + num_cols - 1)}{loc.row_1indexed}'),
+        )
+        ctx.worksheet.format_range(str(header_range), HEADER_FORMAT)
 
     # Diagnostic helpers
     def _log_missing_movies(self, context: dict[str, Any]) -> None:
