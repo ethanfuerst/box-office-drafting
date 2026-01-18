@@ -1,6 +1,6 @@
 import modal
 from dotenv import load_dotenv
-from eftoolkit import setup_logging
+from eftoolkit.utils import setup_logging
 
 from src import project_root
 from src.etl import google_sheet_sync
