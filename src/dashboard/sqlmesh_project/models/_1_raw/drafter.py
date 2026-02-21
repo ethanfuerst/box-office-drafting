@@ -37,6 +37,8 @@ def execute(
         raise ValueError('sheet_name must be set in SQLMesh variables')
 
     credentials_json = os.getenv(credentials_name)
+    if credentials_json is None:
+        raise ValueError(f'{credentials_name} is not set in the environment')
     credentials_dict = json.loads(credentials_json.replace('\n', '\\n'))
 
     with Spreadsheet(credentials=credentials_dict, spreadsheet_name=sheet_name) as ss:

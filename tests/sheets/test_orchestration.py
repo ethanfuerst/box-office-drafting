@@ -11,14 +11,43 @@ def test_run_dashboard_creates_and_runs_dashboard_runner():
 
     mock_runner_instance = MagicMock()
     with patch('src.sheets.runner._load_credentials', return_value={'key': 'value'}):
-        with patch('src.sheets.runner.DashboardRunner') as mock_runner_class:
-            with patch('src.sheets.runner._log_missing_movies'):
-                with patch('src.sheets.runner._log_min_revenue_info'):
-                    mock_runner_class.return_value = mock_runner_instance
+        with patch('src.sheets.runner._get_draftee_names', return_value=['Alice', 'Bob']):
+            with patch('src.sheets.runner.DashboardRunner') as mock_runner_class:
+                with patch('src.sheets.runner._log_missing_movies'):
+                    with patch('src.sheets.runner._log_min_revenue_info'):
+                        mock_runner_class.return_value = mock_runner_instance
 
-                    from src.sheets.runner import run_dashboard
+                        from src.sheets.runner import run_dashboard
 
-                    run_dashboard(config)
+                        run_dashboard(config)
 
     mock_runner_class.assert_called_once()
     mock_runner_instance.run.assert_called_once()
+
+
+def test_run_dashboard_includes_draftee_worksheets():
+    """run_dashboard includes DrafteeWorksheet instances for each draftee."""
+    config = make_config_dict(update_type='s3')
+
+    mock_runner_instance = MagicMock()
+    with patch('src.sheets.runner._load_credentials', return_value={'key': 'value'}):
+        with patch(
+            'src.sheets.runner._get_draftee_names', return_value=['Alice', 'Bob']
+        ):
+            with patch('src.sheets.runner.DashboardRunner') as mock_runner_class:
+                with patch('src.sheets.runner._log_missing_movies'):
+                    with patch('src.sheets.runner._log_min_revenue_info'):
+                        mock_runner_class.return_value = mock_runner_instance
+
+                        from src.sheets.runner import run_dashboard
+
+                        run_dashboard(config)
+
+    call_kwargs = mock_runner_class.call_args[1]
+    worksheets = call_kwargs['worksheets']
+
+    # Dashboard + 2 draftee worksheets
+    assert len(worksheets) == 3
+    assert worksheets[0].name == 'Dashboard'
+    assert worksheets[1].name == 'Alice'
+    assert worksheets[2].name == 'Bob'
