@@ -138,9 +138,10 @@ def _adjust_worksheet_order(
     ss: Any, draftee_names: list[str] | None = None
 ) -> None:
     """Put worksheets in correct order."""
-    order = ['Dashboard', 'Draft', 'Manual Adds', 'Multipliers and Exclusions']
+    order = ['Dashboard']
     if draftee_names:
         order.extend(draftee_names)
+    order.extend(['Draft', 'Manual Adds', 'Multipliers and Exclusions'])
     ss.reorder_worksheets(order)
 
 
