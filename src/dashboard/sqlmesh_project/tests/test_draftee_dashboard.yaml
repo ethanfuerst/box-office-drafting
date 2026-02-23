@@ -1,0 +1,250 @@
+test_draftee_dashboard_released_movie:
+  model: dashboards.draftee_dashboard
+  description: Released movies show revenue, dates, and better pick info
+  inputs:
+    cleaned.drafter:
+      rows:
+        - movie: Movie A
+          name: Alice
+          overall_pick: 1
+          round: 1
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Movie A
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+    cleaned.round_multiplier_overrides:
+      rows: []
+    cleaned.movie_multiplier_overrides:
+      rows: []
+  outputs:
+    query:
+      rows:
+        - draftee_name: Alice
+          round: 1
+          overall_pick: 1
+          movie: Movie A
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+          revenue: 100000000
+          multiplier: 1.0
+          scored_revenue: 100000000
+          better_pick: ""
+          better_pick_scored_revenue: null
+
+
+test_draftee_dashboard_unreleased_movie:
+  model: dashboards.draftee_dashboard
+  description: Unreleased movies have null values for revenue/date columns but show multiplier
+  inputs:
+    cleaned.drafter:
+      rows:
+        - movie: Future Movie
+          name: Bob
+          overall_pick: 2
+          round: 2
+    combined.base_query:
+      rows: []
+    cleaned.round_multiplier_overrides:
+      rows:
+        - round: "2"
+          multiplier: 3.0
+    cleaned.movie_multiplier_overrides:
+      rows: []
+  outputs:
+    query:
+      rows:
+        - draftee_name: Bob
+          round: 2
+          overall_pick: 2
+          movie: Future Movie
+          first_seen_date: null
+          still_in_theaters: null
+          revenue: null
+          multiplier: 3.0
+          scored_revenue: null
+          better_pick: null
+          better_pick_scored_revenue: null
+
+
+test_draftee_dashboard_multiplier_from_base_query:
+  model: dashboards.draftee_dashboard
+  description: Released movies use multiplier from base_query instead of overrides
+  inputs:
+    cleaned.drafter:
+      rows:
+        - movie: Movie A
+          name: Alice
+          overall_pick: 1
+          round: 2
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Movie A
+          drafted_by: Alice
+          revenue: 50000000
+          scored_revenue: 150000000
+          round: 2
+          overall_pick: 1
+          multiplier: 3.0
+          domestic_rev: 30000000
+          domestic_pct: 0.6
+          foreign_rev: 20000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "03/01/2024"
+          still_in_theaters: "Yes"
+    cleaned.round_multiplier_overrides:
+      rows:
+        - round: "2"
+          multiplier: 3.0
+    cleaned.movie_multiplier_overrides:
+      rows: []
+  outputs:
+    query:
+      rows:
+        - draftee_name: Alice
+          round: 2
+          overall_pick: 1
+          movie: Movie A
+          first_seen_date: "03/01/2024"
+          still_in_theaters: "Yes"
+          revenue: 50000000
+          multiplier: 3.0
+          scored_revenue: 150000000
+          better_pick: ""
+          better_pick_scored_revenue: null
+
+
+test_draftee_dashboard_zero_better_pick_excluded:
+  model: dashboards.draftee_dashboard
+  description: Zero better pick scored revenue results in null
+  inputs:
+    cleaned.drafter:
+      rows:
+        - movie: Movie A
+          name: Alice
+          overall_pick: 1
+          round: 1
+    combined.base_query:
+      rows:
+        - rank: 1
+          title: Movie A
+          drafted_by: Alice
+          revenue: 100000000
+          scored_revenue: 100000000
+          round: 1
+          overall_pick: 1
+          multiplier: 1.0
+          domestic_rev: 60000000
+          domestic_pct: 0.6
+          foreign_rev: 40000000
+          foreign_pct: 0.4
+          better_pick_title: ""
+          better_pick_scored_revenue: 0
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+    cleaned.round_multiplier_overrides:
+      rows: []
+    cleaned.movie_multiplier_overrides:
+      rows: []
+  outputs:
+    query:
+      rows:
+        - draftee_name: Alice
+          round: 1
+          overall_pick: 1
+          movie: Movie A
+          first_seen_date: "01/15/2024"
+          still_in_theaters: "No"
+          revenue: 100000000
+          multiplier: 1.0
+          scored_revenue: 100000000
+          better_pick: ""
+          better_pick_scored_revenue: null
+
+
+test_draftee_dashboard_orders_by_name_round_pick:
+  model: dashboards.draftee_dashboard
+  description: Results are ordered by draftee name, round, then overall pick
+  inputs:
+    cleaned.drafter:
+      rows:
+        - movie: Movie B
+          name: Bob
+          overall_pick: 2
+          round: 1
+        - movie: Movie A
+          name: Alice
+          overall_pick: 1
+          round: 1
+        - movie: Movie C
+          name: Alice
+          overall_pick: 3
+          round: 2
+    combined.base_query:
+      rows: []
+    cleaned.round_multiplier_overrides:
+      rows: []
+    cleaned.movie_multiplier_overrides:
+      rows: []
+  outputs:
+    query:
+      partial: true
+      rows:
+        - draftee_name: Alice
+          movie: Movie A
+        - draftee_name: Alice
+          movie: Movie C
+        - draftee_name: Bob
+          movie: Movie B
+
+
+test_draftee_dashboard_movie_multiplier_override:
+  model: dashboards.draftee_dashboard
+  description: Unreleased movies use combined round and movie multiplier overrides
+  inputs:
+    cleaned.drafter:
+      rows:
+        - movie: Special Movie
+          name: Alice
+          overall_pick: 1
+          round: 2
+    combined.base_query:
+      rows: []
+    cleaned.round_multiplier_overrides:
+      rows:
+        - round: "2"
+          multiplier: 2.0
+    cleaned.movie_multiplier_overrides:
+      rows:
+        - movie: Special Movie
+          multiplier: 1.5
+  outputs:
+    query:
+      rows:
+        - draftee_name: Alice
+          round: 2
+          overall_pick: 1
+          movie: Special Movie
+          first_seen_date: null
+          still_in_theaters: null
+          revenue: null
+          multiplier: 3.0
+          scored_revenue: null
+          better_pick: null
+          better_pick_scored_revenue: null

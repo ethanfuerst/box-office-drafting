@@ -4,7 +4,6 @@ This module provides worksheet definitions for the box office drafting dashboard
 following the eftoolkit WorksheetDefinition protocol for modular, testable sheets.
 """
 
-from src.sheets.tabs import DashboardWorksheet
+from src.sheets.tabs import DashboardWorksheet, DrafteeWorksheet
 
-__all__ = [
-    'DashboardWorksheet']
+__all__ = ['DashboardWorksheet', 'DrafteeWorksheet']

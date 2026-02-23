@@ -11,11 +11,12 @@ Worksheet structure setup uses pre_run_hooks (eftoolkit 1.2.0+).
 import json
 import logging
 import os
+from functools import partial
 from typing import Any
 
 from eftoolkit.gsheets.runner import DashboardRunner
 
-from src.sheets.tabs import DashboardWorksheet
+from src.sheets.tabs import DashboardWorksheet, DrafteeWorksheet
 from src.utils.config import ConfigDict
 from src.utils.db_connection import get_duckdb
 from src.utils.query import table_to_df
@@ -25,7 +26,7 @@ def run_dashboard(config_dict: ConfigDict) -> None:
     """Run the complete dashboard update workflow.
 
     This orchestrates:
-    1. Setup worksheet structure via pre_run_hooks (Manual Adds, Multipliers, Dashboard)
+    1. Setup worksheet structure via pre_run_hooks (Manual Adds, Multipliers, Dashboard, Draftee tabs)
     2. Generate and write dashboard data via DashboardRunner
     3. Apply formatting via WorksheetFormatting
     4. Run post-write hooks (titles, header formatting, timestamps)
@@ -36,6 +37,7 @@ def run_dashboard(config_dict: ConfigDict) -> None:
     """
     credentials_dict = _load_credentials(config_dict['gspread_credentials_name'])
     sheet_name = config_dict['sheet_name']
+    draftee_names = _get_draftee_names(config_dict)
 
     runner: DashboardRunner | None = None
 
@@ -48,15 +50,38 @@ def run_dashboard(config_dict: ConfigDict) -> None:
         ws = ss.worksheet('Dashboard')
         ws.resize_sheet(rows=sheet_height, columns=25)
 
+    def _resize_draftee_sheets(ss: Any) -> None:
+        """Resize draftee sheets to fit content with borders."""
+        nonlocal runner
+        if runner is None:
+            return
+        for name in draftee_names:
+            key = f'draftee_{name}_df'
+            df = runner.context.get(key)
+            if df is not None:
+                # rows: 1 border(row1) + 1 sb header(row2) + 1 sb data(row3)
+                #       + 1 empty(row4) + 1 picks header(row5)
+                #       + N picks data(rows 6..5+N) + 1 border(row 6+N) = N + 6
+                # cols: 1 border + 10 data + 1 border = 12
+                ws = ss.worksheet(name)
+                ws.resize_sheet(rows=len(df) + 6, columns=12)
+
     runner = DashboardRunner(
         config={
             'sheet_name': sheet_name,
             'config_dict': config_dict,
         },
         credentials=credentials_dict,
-        worksheets=[DashboardWorksheet()],
-        pre_run_hooks=[_handle_missing_worksheets],
-        post_run_hooks=[_resize_sheet, _adjust_worksheet_order],
+        worksheets=[DashboardWorksheet()]
+        + [DrafteeWorksheet(name) for name in draftee_names],
+        pre_run_hooks=[
+            partial(_handle_missing_worksheets, draftee_names=draftee_names)
+        ],
+        post_run_hooks=[
+            _resize_sheet,
+            _resize_draftee_sheets,
+            partial(_adjust_worksheet_order, draftee_names=draftee_names),
+        ],
     )
     runner.run()
 
@@ -78,7 +103,20 @@ def _load_credentials(gspread_credentials_name: str) -> dict[str, Any]:
         )
 
 
-def _handle_missing_worksheets(ss: Any) -> None:
+def _get_draftee_names(config_dict: ConfigDict) -> list[str]:
+    """Get draftee names in draft order (by first overall pick)."""
+    drafter_df = table_to_df(config_dict, 'cleaned.drafter')
+    return (
+        drafter_df.groupby('name')['overall_pick']
+        .min()
+        .sort_values()
+        .index.tolist()
+    )
+
+
+def _handle_missing_worksheets(
+    ss: Any, draftee_names: list[str] | None = None
+) -> None:
     """Create missing worksheets if missing."""
     existing_worksheets = ss.get_worksheet_names()
     if 'Manual Adds' not in existing_worksheets:
@@ -89,12 +127,21 @@ def _handle_missing_worksheets(ss: Any) -> None:
         ss.delete_worksheet('Dashboard')
     ss.create_worksheet('Dashboard', rows=500, cols=25)
 
+    if draftee_names:
+        for name in draftee_names:
+            if name in existing_worksheets:
+                ss.delete_worksheet(name)
+            ss.create_worksheet(name, rows=100, cols=12)
 
-def _adjust_worksheet_order(ss: Any) -> None:
-    """Put worksheets in correct order"""
-    ss.reorder_worksheets(
-        ['Dashboard', 'Draft', 'Manual Adds', 'Multipliers and Exclusions']
-    )
+
+def _adjust_worksheet_order(
+    ss: Any, draftee_names: list[str] | None = None
+) -> None:
+    """Put worksheets in correct order."""
+    order = ['Dashboard', 'Draft', 'Manual Adds', 'Multipliers and Exclusions']
+    if draftee_names:
+        order.extend(draftee_names)
+    ss.reorder_worksheets(order)
 
 
 def _log_missing_movies(config_dict: ConfigDict) -> None:
