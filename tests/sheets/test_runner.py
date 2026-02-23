@@ -102,7 +102,7 @@ def test_adjust_worksheet_order_without_draftees():
 
 
 def test_adjust_worksheet_order_with_draftees():
-    """Draftee tabs are appended after standard tabs."""
+    """Draftee tabs come after Dashboard, before Draft/Manual Adds/Multipliers."""
     mock_ss = MagicMock()
 
     from src.sheets.runner import _adjust_worksheet_order
@@ -112,11 +112,11 @@ def test_adjust_worksheet_order_with_draftees():
     mock_ss.reorder_worksheets.assert_called_once_with(
         [
             'Dashboard',
+            'Alice',
+            'Bob',
             'Draft',
             'Manual Adds',
             'Multipliers and Exclusions',
-            'Alice',
-            'Bob',
         ]
     )
 
