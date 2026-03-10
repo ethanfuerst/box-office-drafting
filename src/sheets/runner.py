@@ -14,12 +14,48 @@ import os
 from functools import partial
 from typing import Any
 
+from eftoolkit.gsheets import Spreadsheet
 from eftoolkit.gsheets.runner import DashboardRunner
 
 from src.sheets.tabs import DashboardWorksheet, DrafteeWorksheet
 from src.utils.config import ConfigDict
 from src.utils.db_connection import get_duckdb
 from src.utils.query import table_to_df
+
+_SOURCE_TABS: dict[str, dict[str, Any]] = {
+    'Manual Adds': {
+        'headers': ['title', 'revenue', 'domestic_rev', 'foreign_rev', 'release_date'],
+        'rows': 100,
+        'cols': 5,
+    },
+    'Multipliers and Exclusions': {
+        'headers': ['value', 'multiplier', 'type'],
+        'rows': 100,
+        'cols': 3,
+    },
+}
+
+
+def ensure_source_tabs_exist(config_dict: ConfigDict) -> None:
+    """Create missing source tabs with column headers.
+
+    This must run before SQLMesh so raw models can read from these tabs.
+    The Draft tab is the only required tab — it must already exist.
+    """
+    credentials_dict = _load_credentials(config_dict['gspread_credentials_name'])
+    sheet_name = config_dict['sheet_name']
+
+    with Spreadsheet(
+        credentials=credentials_dict, spreadsheet_name=sheet_name
+    ) as ss:
+        existing = ss.get_worksheet_names()
+        for tab_name, tab_config in _SOURCE_TABS.items():
+            if tab_name not in existing:
+                ws = ss.create_worksheet(
+                    tab_name, rows=tab_config['rows'], cols=tab_config['cols']
+                )
+                ws.write_values('A1', [tab_config['headers']])
+                ws.flush()
 
 
 def run_dashboard(config_dict: ConfigDict) -> None:
@@ -117,12 +153,8 @@ def _get_draftee_names(config_dict: ConfigDict) -> list[str]:
 def _handle_missing_worksheets(
     ss: Any, draftee_names: list[str] | None = None
 ) -> None:
-    """Create missing worksheets if missing."""
+    """Recreate Dashboard and draftee worksheets."""
     existing_worksheets = ss.get_worksheet_names()
-    if 'Manual Adds' not in existing_worksheets:
-        ss.create_worksheet('Manual Adds', rows=100, cols=5)
-    if 'Multipliers and Exclusions' not in existing_worksheets:
-        ss.create_worksheet('Multipliers and Exclusions', rows=100, cols=3)
     if 'Dashboard' in existing_worksheets:
         ss.delete_worksheet('Dashboard')
     ss.create_worksheet('Dashboard', rows=500, cols=25)

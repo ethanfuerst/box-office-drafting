@@ -4,7 +4,7 @@ import os
 from sqlmesh.core.context import Context
 
 from src import project_root
-from src.sheets.runner import run_dashboard
+from src.sheets.runner import ensure_source_tabs_exist, run_dashboard
 from src.utils.config import ConfigDict
 
 
@@ -24,5 +24,6 @@ def run_sqlmesh_plan(config_dict: ConfigDict) -> None:
 
 def google_sheet_sync(config_dict: ConfigDict) -> None:
     '''Run SQLMesh plan and update Google Sheet dashboard with latest data.'''
+    ensure_source_tabs_exist(config_dict)
     run_sqlmesh_plan(config_dict)
     run_dashboard(config_dict)

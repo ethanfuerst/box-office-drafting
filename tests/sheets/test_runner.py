@@ -26,8 +26,8 @@ def test_load_credentials_raises_on_missing_env():
         _load_credentials('NONEXISTENT_CREDS')
 
 
-def test_handle_missing_worksheets_creates_worksheets():
-    """Worksheet structure is created correctly via pre_run_hooks."""
+def test_handle_missing_worksheets_creates_dashboard():
+    """Dashboard worksheet is created via pre_run_hooks."""
     mock_ss = MagicMock()
     mock_ss.get_worksheet_names.return_value = ['Draft']
 
@@ -35,13 +35,10 @@ def test_handle_missing_worksheets_creates_worksheets():
 
     _handle_missing_worksheets(mock_ss)
 
-    # Should create Manual Adds, Multipliers, and Dashboard
     create_calls = mock_ss.create_worksheet.call_args_list
     worksheet_names = [call[0][0] for call in create_calls]
 
-    assert 'Manual Adds' in worksheet_names
-    assert 'Multipliers and Exclusions' in worksheet_names
-    assert 'Dashboard' in worksheet_names
+    assert worksheet_names == ['Dashboard']
 
 
 def test_handle_missing_worksheets_deletes_existing_dashboard():
@@ -136,3 +133,53 @@ def test_get_draftee_names_returns_names_in_draft_order():
         names = _get_draftee_names({'draft_id': 'test'})
 
     assert names == ['Bob', 'Alice']
+
+
+def test_ensure_source_tabs_exist_creates_missing_tabs(monkeypatch):
+    """Missing source tabs are created with column headers."""
+    monkeypatch.setenv('TEST_CREDS', '{"type": "service_account"}')
+    mock_ss = MagicMock()
+    mock_ss.get_worksheet_names.return_value = ['Draft']
+    mock_ws = MagicMock()
+    mock_ss.create_worksheet.return_value = mock_ws
+
+    with patch('src.sheets.runner.Spreadsheet') as mock_spreadsheet:
+        mock_spreadsheet.return_value.__enter__ = MagicMock(return_value=mock_ss)
+        mock_spreadsheet.return_value.__exit__ = MagicMock(return_value=False)
+
+        from src.sheets.runner import ensure_source_tabs_exist
+
+        ensure_source_tabs_exist({
+            'gspread_credentials_name': 'TEST_CREDS',
+            'sheet_name': 'Test Sheet',
+        })
+
+    create_calls = mock_ss.create_worksheet.call_args_list
+    worksheet_names = [call[0][0] for call in create_calls]
+
+    assert 'Manual Adds' in worksheet_names
+    assert 'Multipliers and Exclusions' in worksheet_names
+    assert mock_ws.write_values.call_count == 2
+    assert mock_ws.flush.call_count == 2
+
+
+def test_ensure_source_tabs_exist_skips_existing_tabs(monkeypatch):
+    """Existing source tabs are not recreated."""
+    monkeypatch.setenv('TEST_CREDS', '{"type": "service_account"}')
+    mock_ss = MagicMock()
+    mock_ss.get_worksheet_names.return_value = [
+        'Draft', 'Manual Adds', 'Multipliers and Exclusions'
+    ]
+
+    with patch('src.sheets.runner.Spreadsheet') as mock_spreadsheet:
+        mock_spreadsheet.return_value.__enter__ = MagicMock(return_value=mock_ss)
+        mock_spreadsheet.return_value.__exit__ = MagicMock(return_value=False)
+
+        from src.sheets.runner import ensure_source_tabs_exist
+
+        ensure_source_tabs_exist({
+            'gspread_credentials_name': 'TEST_CREDS',
+            'sheet_name': 'Test Sheet',
+        })
+
+    mock_ss.create_worksheet.assert_not_called()
